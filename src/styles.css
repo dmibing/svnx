@@ -558,6 +558,11 @@ textarea::placeholder {
   max-width: 130px;
   cursor: pointer;
 }
+select option,
+select optgroup {
+  background: var(--surface);
+  color: var(--text);
+}
 .file-list {
   flex: 1;
   overflow: auto;

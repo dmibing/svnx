@@ -107,6 +107,12 @@ try {
   await expect(page.getByText("4 个变更文件", { exact: true })).toBeVisible({
     timeout: 20000,
   });
+  await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveValue(
+    "modified",
+  );
+  await expect(page.locator(".file-row")).toHaveCount(3);
+  await page.getByRole("combobox", { name: "状态筛选" }).selectOption("all");
+  await expect(page.locator(".file-row")).toHaveCount(4);
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
     timeout: 20000,
   });
@@ -164,6 +170,14 @@ try {
   await page.getByRole("button", { name: "深色", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "完成", exact: true }).click();
+  await expect(page.locator('.filter-row option[value="all"]')).toHaveCSS(
+    "background-color",
+    "rgb(32, 32, 32)",
+  );
+  await expect(page.locator('.filter-row option[value="all"]')).toHaveCSS(
+    "color",
+    "rgb(232, 232, 232)",
+  );
   const contrast = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
     const lum = (hex) => {

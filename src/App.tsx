@@ -57,7 +57,7 @@ export default function App() {
     [selected, setSelected] = useState<FileEntry | null>(null),
     [checked, setChecked] = useState<string[]>([]),
     [query, setQuery] = useState(""),
-    [filter, setFilter] = useState("all"),
+    [filter, setFilter] = useState("modified"),
     [menu, setMenu] = useState(false),
     [modal, setModal] = useState<{ kind: string; paths: string[] } | null>(
       null,
@@ -146,7 +146,7 @@ export default function App() {
     setSelected(null);
     setChecked([]);
     setQuery("");
-    setFilter("all");
+    setFilter("modified");
     setComparison(null);
     setView("changes");
     setHistoryScope("");
