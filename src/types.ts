@@ -34,6 +34,8 @@ export interface Workspace {
   revision: number;
 }
 export interface Settings {
+  autoCheckUpdates: boolean;
+  updateCheckMinutes: number;
   theme: Theme;
   listWidth: number;
   svnPath: string;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sun, Moon, Monitor, Check, Loader2, FolderOpen } from "lucide-react";
 import Dialog from "./Dialog";
+import Select from "./Select";
 import { bridge, unwrap, useClient } from "../client";
 import type { Credentials, Settings, Workspace } from "../types";
 import type { Execute } from "./Operations";
@@ -26,88 +27,142 @@ export function SettingsDialog({
     }
   };
   return (
-    <Dialog title="偏好设置" onClose={onClose} busy={b}>
-      <div className="settings-section">
-        <h3>外观</h3>
-        <p>选择工作空间的配色方案。</p>
-        <div className="theme-options">
-          {(
-            [
-              { id: "light", name: "浅色", icon: Sun },
-              { id: "dark", name: "深色", icon: Moon },
-              { id: "system", name: "跟随系统", icon: Monitor },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              className={settings.theme === t.id ? "chosen" : ""}
-              onClick={() =>
-                void action(async () => {
-                  const next = unwrap(await bridge().settings({ theme: t.id }));
-                  set({ settings: next });
-                })
-              }
-            >
-              <t.icon size={22} />
-              <span>{t.name}</span>
-              {settings.theme === t.id && <Check size={13} />}
-            </button>
-          ))}
+    <Dialog
+      title="偏好设置"
+      onClose={onClose}
+      busy={b}
+      className="settings-modal"
+    >
+      <div className="settings-grid">
+        <div className="settings-section">
+          <h3>外观</h3>
+          <p>选择工作空间的配色方案。</p>
+          <div className="theme-options">
+            {(
+              [
+                { id: "light", name: "浅色", icon: Sun },
+                { id: "dark", name: "深色", icon: Moon },
+                { id: "system", name: "跟随系统", icon: Monitor },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                className={settings.theme === t.id ? "chosen" : ""}
+                onClick={() =>
+                  void action(async () => {
+                    const next = unwrap(
+                      await bridge().settings({ theme: t.id }),
+                    );
+                    set({ settings: next });
+                  })
+                }
+              >
+                <t.icon size={22} />
+                <span>{t.name}</span>
+                {settings.theme === t.id && <Check size={13} />}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="settings-section">
+          <h3>SVN 命令行引擎</h3>
+          <p className="break-path">
+            {settings.svnPath} · {engine || "未检测到"}
+          </p>
+          {engineError && <p className="inline-warning">{engineError}</p>}
+          <button
+            className="button"
+            disabled={b}
+            onClick={() =>
+              void action(async () => {
+                const next = unwrap(await bridge().chooseEngine());
+                if (next)
+                  set({
+                    settings: { ...settings, svnPath: next.path },
+                    engine: next.version,
+                    engineError: "",
+                  });
+              })
+            }
+          >
+            <FolderOpen size={14} />
+            选择 SVN 1.14+ 可执行文件
+          </button>
+        </div>
+        <div className="settings-section">
+          <h3>外部差异工具</h3>
+          <p className="break-path">
+            {settings.externalTool ||
+              "未配置。选择支持 old-file new-file 参数的工具，如 WinMerge。"}
+          </p>
+          <button
+            className="button"
+            disabled={b}
+            onClick={() =>
+              void action(async () => {
+                const file = unwrap(await bridge().chooseExternalTool());
+                if (file)
+                  set({ settings: { ...settings, externalTool: file } });
+              })
+            }
+          >
+            选择差异工具
+          </button>
+        </div>
+        <div className="settings-section">
+          <h3>还原备份</h3>
+          <p>
+            每次最多 512 MB，每个工作副本最多 2
+            GB。达到上限会停止操作；不会自动删除旧备份。
+          </p>
+          <button className="button" onClick={onBackups}>
+            查看当前工作副本备份
+          </button>
         </div>
       </div>
-      <div className="settings-section">
-        <h3>SVN 命令行引擎</h3>
-        <p className="break-path">
-          {settings.svnPath} · {engine || "未检测到"}
-        </p>
-        {engineError && <p className="inline-warning">{engineError}</p>}
-        <button
-          className="button"
-          disabled={b}
-          onClick={() =>
-            void action(async () => {
-              const next = unwrap(await bridge().chooseEngine());
-              if (next)
+      <div className="settings-update-check">
+        <div>
+          <h3>远端更新检测</h3>
+          <p>后台检测待更新路径，不会自动拉取文件。</p>
+        </div>
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={settings.autoCheckUpdates ?? true}
+            disabled={b}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              void action(async () => {
                 set({
-                  settings: { ...settings, svnPath: next.path },
-                  engine: next.version,
-                  engineError: "",
+                  settings: unwrap(
+                    await bridge().settings({ autoCheckUpdates: enabled }),
+                  ),
                 });
-            })
-          }
-        >
-          <FolderOpen size={14} />
-          选择 SVN 1.14+ 可执行文件
-        </button>
-      </div>
-      <div className="settings-section">
-        <h3>外部差异工具</h3>
-        <p className="break-path">
-          {settings.externalTool ||
-            "未配置。选择支持 old-file new-file 参数的工具，如 WinMerge。"}
-        </p>
-        <button
-          className="button"
-          disabled={b}
-          onClick={() =>
+              });
+            }}
+          />
+          自动检测
+        </label>
+        <Select
+          label="更新检测间隔"
+          disabled={b || !(settings.autoCheckUpdates ?? true)}
+          value={String(settings.updateCheckMinutes || 5)}
+          onValueChange={(value) =>
             void action(async () => {
-              const file = unwrap(await bridge().chooseExternalTool());
-              if (file) set({ settings: { ...settings, externalTool: file } });
+              set({
+                settings: unwrap(
+                  await bridge().settings({
+                    updateCheckMinutes: Number(value),
+                  }),
+                ),
+              });
             })
           }
-        >
-          选择差异工具
-        </button>
-      </div>
-      <div className="settings-section">
-        <h3>还原备份</h3>
-        <p>
-          每次最多 512 MB，每个工作副本最多 2
-          GB。达到上限会停止操作；不会自动删除旧备份。
-        </p>
-        <button className="button" onClick={onBackups}>
-          查看当前工作副本备份
-        </button>
+          options={[1, 5, 10, 15, 30, 60].map((value) => ({
+            value: String(value),
+            label: `每 ${value} 分钟`,
+          }))}
+        />
       </div>
       <p className="modal-note">
         界面语言：简体中文 · 设置自动保存；密码不写入设置。

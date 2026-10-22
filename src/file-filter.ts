@@ -6,6 +6,7 @@ export function filterFiles(files: FileEntry[], query: string, filter: string) {
     (file) =>
       file.path.toLowerCase().includes(search) &&
       (filter === "all" ||
+        (filter === "modified" && file.status === "added") ||
         (filter === "conflicted" &&
           (file.treeConflict || file.props === "conflicted")) ||
         file.status === filter),

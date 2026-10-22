@@ -7,6 +7,7 @@ const iconv = require("iconv-lite");
 const { run, SvnError, decodeOutput, nativeEncoding } = require("./runner.cjs");
 const { schemas } = require("./contracts.cjs");
 const { BackupStore } = require("./backup.cjs");
+const { updateResult } = require("./update-result.cjs");
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
@@ -318,6 +319,51 @@ class SvnService {
           wcRoot: entry["wc-info"]["wcroot-abspath"],
         };
       }
+      case "incoming": {
+        const data = parser.parse(
+          (
+            await cli(
+              ["status", "--xml", "--show-updates", "--ignore-externals", "."],
+              { timeout: 30000 },
+            )
+          ).toString("utf8"),
+        );
+        const entries = [
+          ...array(data.status?.target).flatMap((target) =>
+            array(target.entry),
+          ),
+          ...array(data.status?.changelist).flatMap((list) =>
+            array(list.entry),
+          ),
+        ];
+        const changed = await Promise.all(
+          entries.map(async (entry) => {
+            const status = entry["repos-status"];
+            if (!status) return null;
+            const propsChanged = ![undefined, "none", "normal"].includes(
+              status.props,
+            );
+            if (["none", "normal"].includes(status.item) && !propsChanged)
+              return null;
+            // Parent directories also report modified for changed children; count
+            // their own property changes, additions and deletions, not that summary.
+            if (status.item === "modified" && !propsChanged) {
+              const localPath = path.isAbsolute(entry.path)
+                ? entry.path
+                : path.join(root, entry.path);
+              if ((await fs.stat(localPath).catch(() => null))?.isDirectory())
+                return null;
+            }
+            return entry.path;
+          }),
+        );
+        const paths = [...new Set(changed.filter((value) => value !== null))];
+        return {
+          count: paths.length,
+          paths,
+          checkedAt: new Date().toISOString(),
+        };
+      }
       case "status":
         return status();
       case "tree": {
@@ -434,7 +480,7 @@ class SvnService {
               ]),
             ),
           );
-        return { output: output.join("\n") };
+        return updateResult(output.join("\n"));
       }
       case "add":
         return {

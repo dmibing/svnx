@@ -14,6 +14,13 @@ const os = require("node:os");
 const { randomUUID } = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { schemas, revision } = require("./contracts.cjs");
+// Separate Chromium caches when multiple development instances are running.
+if (process.env.SVNX_DEV_URL) {
+  const sessionDirectory = fsSync.mkdtempSync(
+    path.join(os.tmpdir(), "svnx-dev-"),
+  );
+  app.setPath("sessionData", sessionDirectory);
+}
 let window, worker, config, configFile, checkoutDirectory;
 let writing = Promise.resolve();
 const pending = new Map(),
@@ -21,6 +28,7 @@ const pending = new Map(),
   watchers = new Map();
 const readMethods = new Set([
   "status",
+  "incoming",
   "info",
   "tree",
   "diff",
@@ -37,7 +45,47 @@ const defaults = {
   svnPath: "svn",
   externalTool: "",
   locale: "zh-CN",
+  autoCheckUpdates: true,
+  updateCheckMinutes: 5,
 };
+let updateCheckTimer;
+const incomingUpdates = {};
+const checkingUpdates = new Set();
+async function checkIncoming(workspace) {
+  if (!config.settings.autoCheckUpdates || checkingUpdates.has(workspace.id))
+    return;
+  checkingUpdates.add(workspace.id);
+  try {
+    const result = await rpc("incoming", { workspaceId: workspace.id });
+    if (
+      !config.settings.autoCheckUpdates ||
+      !config.workspaces.some((w) => w.id === workspace.id)
+    )
+      return;
+    incomingUpdates[workspace.id] = result;
+    broadcast({ type: "incoming", workspaceId: workspace.id, result });
+  } catch (error) {
+    if (!config.settings.autoCheckUpdates) return;
+    const result = { ...incomingUpdates[workspace.id], error: error.message };
+    incomingUpdates[workspace.id] = result;
+    broadcast({ type: "incoming", workspaceId: workspace.id, result });
+  } finally {
+    checkingUpdates.delete(workspace.id);
+  }
+}
+function scheduleUpdateChecks() {
+  clearInterval(updateCheckTimer);
+  if (!config.settings.autoCheckUpdates) return;
+  const checkAll = async () => {
+    for (const workspace of config.workspaces) await checkIncoming(workspace);
+  };
+  updateCheckTimer = setInterval(
+    checkAll,
+    config.settings.updateCheckMinutes * 60000,
+  );
+  updateCheckTimer.unref();
+  void checkAll();
+}
 function broadcast(data) {
   if (window && !window.isDestroyed())
     window.webContents.send("svnx:event", data);
@@ -99,6 +147,7 @@ async function register(data) {
   watch(w);
   await save();
   broadcast({ type: "workspaces", workspaces: config.workspaces });
+  void checkIncoming(w);
   return w;
 }
 function trusted(event) {
@@ -181,7 +230,7 @@ async function setup() {
     } catch (e) {
       engineError = e.message;
     }
-    return { ...config, engine, engineError };
+    return { ...config, engine, engineError, incomingUpdates };
   });
   handle("svnx:open", async () => {
     const r = await dialog.showOpenDialog(window, {
@@ -220,7 +269,15 @@ async function setup() {
     if (
       !patch ||
       typeof patch !== "object" ||
-      Object.keys(patch).some((k) => !["theme", "listWidth"].includes(k))
+      Object.keys(patch).some(
+        (k) =>
+          ![
+            "theme",
+            "listWidth",
+            "autoCheckUpdates",
+            "updateCheckMinutes",
+          ].includes(k),
+      )
     )
       throw new Error("不支持的设置");
     if (patch.theme && !["light", "dark", "system"].includes(patch.theme))
@@ -232,9 +289,26 @@ async function setup() {
         patch.listWidth > 520)
     )
       throw new Error("面板宽度无效");
+    if (
+      patch.autoCheckUpdates !== undefined &&
+      typeof patch.autoCheckUpdates !== "boolean"
+    )
+      throw new Error("自动检测开关无效");
+    if (
+      patch.updateCheckMinutes !== undefined &&
+      (!Number.isInteger(patch.updateCheckMinutes) ||
+        patch.updateCheckMinutes < 1 ||
+        patch.updateCheckMinutes > 60)
+    )
+      throw new Error("检测间隔应为 1 至 60 分钟");
     Object.assign(config.settings, patch);
     nativeTheme.themeSource = config.settings.theme;
     await save();
+    if (
+      patch.autoCheckUpdates !== undefined ||
+      patch.updateCheckMinutes !== undefined
+    )
+      scheduleUpdateChecks();
     return config.settings;
   });
   handle("svnx:engine", async () => {
@@ -343,6 +417,12 @@ async function setup() {
         id,
       );
       const result = method === "checkout" ? await register(data) : data;
+      if (["update", "commit"].includes(method)) {
+        const workspace = config.workspaces.find(
+          (w) => w.id === params.workspaceId,
+        );
+        if (workspace) void checkIncoming(workspace);
+      }
       broadcast({
         type: "task",
         id,
@@ -437,6 +517,7 @@ app
   .whenReady()
   .then(setup)
   .then(createWindow)
+  .then(scheduleUpdateChecks)
   .catch((e) => {
     dialog.showErrorBox("SVNX 启动失败", e.message);
     app.quit();
@@ -446,6 +527,7 @@ app.on("window-all-closed", () => {
 });
 let exiting = false;
 app.on("before-quit", (event) => {
+  clearInterval(updateCheckTimer);
   if (activeTasks.size && !exiting) {
     event.preventDefault();
     for (const id of activeTasks.keys())

@@ -18,6 +18,15 @@ playwright-report/
 *.pfx
 *.p12
 settings.json
+settings.json.tmp
 backups/
+# Local Electron profiles, configuration, caches and private workspaces.
+userData/
+user-data/
+sessionData/
+session-data/
+svnx-dev-*/
+svnx-diff-*/
+svnx-desktop-*/
 .DS_Store
 Thumbs.db

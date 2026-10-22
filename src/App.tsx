@@ -86,6 +86,14 @@ export default function App() {
     (t) =>
       t.workspaceId === selectedId && ["queued", "running"].includes(t.state),
   );
+  const incoming = state.incomingUpdates[selectedId];
+  const updateHint = !settings.autoCheckUpdates
+    ? "自动检测已关闭，可在偏好设置中开启"
+    : incoming?.error
+      ? `自动检测失败：${incoming.error}${incoming.checkedAt ? "；显示上次成功检测的数量" : ""}`
+      : incoming?.checkedAt
+        ? `待更新 ${incoming.count || 0} 个路径；上次检测 ${new Date(incoming.checkedAt).toLocaleTimeString("zh-CN")}，每 ${settings.updateCheckMinutes} 分钟检测`
+        : "正在检测远端更新";
   const onError = useCallback((e: Error & { code?: string }) => {
     if (e.code === "CANCELLED") return;
     setError({ code: e.code, message: e.message });
@@ -112,6 +120,12 @@ export default function App() {
     const payload = { workspaceId: selectedId, ...params };
     try {
       const result = await run(method, payload);
+      if (method === "add" && selectedId) {
+        await useClient.getState().refresh(selectedId);
+        setFilter("modified");
+        setQuery("");
+        setChecked([]);
+      }
       if (
         ![
           "status",
@@ -131,7 +145,7 @@ export default function App() {
           setChecked([]);
           setSelected(null);
         }
-        if (selectedId) void refresh();
+        if (selectedId && method !== "add") void refresh();
       }
       return result;
     } catch (e) {
@@ -283,8 +297,21 @@ export default function App() {
       return;
     }
     if (kind === "history") {
-      setHistoryScope(paths[0] || "");
+      const target = active;
+      if (!target) {
+        notify("请先选择要查看历史的文件。");
+        return;
+      }
+      if (
+        ["unversioned", "added", "ignored"].includes(target.status) &&
+        !target.copied
+      ) {
+        notify("该路径尚未提交到仓库，暂无历史记录。");
+        return;
+      }
+      setHistoryScope(target.path);
       setView("history");
+      setComparison(null);
       setComparison(null);
       return;
     }
@@ -404,8 +431,15 @@ export default function App() {
           <div className="sidebar-bottom">
             <div className="connection">
               <span className={engine ? "status-dot" : "status-dot offline"} />
-              <span>{engine ? "引擎已就绪" : "引擎未就绪"}</span>
-              <span className="mono">{engine ? `SVN ${engine}` : ""}</span>
+              <span>SVN 版本</span>
+              <span
+                className="mono"
+                title={engine || engineError || "未检测到 SVN"}
+              >
+                {engine
+                  ? engine.match(/\d+\.\d+(?:\.\d+)?/)?.[0] || engine
+                  : "未检测到"}
+              </span>
             </div>
             <button
               className="nav-item"
@@ -474,7 +508,12 @@ export default function App() {
                   </div>
                   <h1>
                     {view === "changes" ? "本地变更" : "版本历史"}
-                    <span className="revision">r{current.revision}</span>
+                    <span
+                      className="revision"
+                      title="工作副本根目录的基础版本；文件可能处于不同版本，此处不代表仓库最新版本。"
+                    >
+                      根目录 r{current.revision}
+                    </span>
                   </h1>
                   <div className="workspace-path" title={current.url}>
                     <Folder size={12} />
@@ -484,11 +523,26 @@ export default function App() {
                 <div className="workspace-actions">
                   <button
                     className="button"
+                    title={updateHint}
                     disabled={!engine}
                     onClick={() => setModal({ kind: "update", paths: [""] })}
                   >
                     <ArrowDownToLine size={15} />
                     更新
+                    {settings.autoCheckUpdates &&
+                      incoming?.count !== undefined && (
+                        <span
+                          className="button-count incoming-count"
+                          data-empty={incoming.count === 0}
+                          aria-label={`${incoming.count} 个路径可更新`}
+                          aria-live="polite"
+                        >
+                          {incoming.count > 99 ? "99+" : incoming.count}
+                        </span>
+                      )}
+                    {settings.autoCheckUpdates && incoming?.error && (
+                      <AlertTriangle size={13} aria-label="远端更新检测失败" />
+                    )}
                   </button>
                   <button
                     className="button primary"
@@ -522,7 +576,7 @@ export default function App() {
                   变更<span>{visibleCount}</span>
                 </button>
                 <button
-                  className={`tab ${view === "history" ? "active" : ""}`}
+                  className={`tab ${view === "history" && !historyScope ? "active" : ""}`}
                   onClick={() => {
                     setView("history");
                     setHistoryScope("");
@@ -533,8 +587,9 @@ export default function App() {
                   历史记录
                 </button>
                 <button
-                  className="tab file-history"
+                  className={`tab file-history ${view === "history" && historyScope ? "active" : ""}`}
                   disabled={!active}
+                  title={active ? `查看 ${active.path} 的历史` : "请先选择文件"}
                   onClick={() => action("history")}
                 >
                   所选路径历史

@@ -57,8 +57,6 @@ port.on("message", async (event) => {
             service.executable,
             [
               "checkout",
-              "--accept",
-              "postpone",
               "-r",
               params.revision || "HEAD",
               `${params.url}@`,

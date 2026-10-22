@@ -60,6 +60,49 @@ test("version, root detection and canonical paths", async () => {
   assert.equal(w.path, await fs.realpath(root));
   assert.equal((await exec("info")).revision, 0);
 });
+test("incoming detects remote changes without updating local files", async () => {
+  const repo = path.join(directory, "incoming-repo");
+  const writer = path.join(directory, "incoming-writer");
+  const reader = path.join(directory, "incoming-reader");
+  cli("svnadmin", ["create", repo]);
+  cli("svn", ["checkout", pathToFileURL(repo).href, writer]);
+  await fs.writeFile(path.join(writer, "待更新.txt"), "before\n");
+  cli("svn", ["add", "待更新.txt"], writer);
+  cli("svn", ["commit", "-m", "initial"], writer);
+  cli("svn", ["checkout", pathToFileURL(repo).href, reader]);
+  const monitor = new SvnService({
+    backupDirectory: path.join(directory, "incoming-backups"),
+  });
+  monitor.register({ id: "incoming", path: reader });
+  assert.equal(
+    (await monitor.execute("incoming", { workspaceId: "incoming" })).count,
+    0,
+  );
+  await fs.writeFile(path.join(writer, "待更新.txt"), "after\n");
+  await fs.writeFile(path.join(writer, "新增.txt"), "new\n");
+  cli("svn", ["add", "新增.txt"], writer);
+  cli("svn", ["commit", "-m", "remote changes"], writer);
+  const incoming = await monitor.execute("incoming", {
+    workspaceId: "incoming",
+  });
+  assert.equal(incoming.count, 2);
+  assert.equal(
+    await fs.readFile(path.join(reader, "待更新.txt"), "utf8"),
+    "before\n",
+  );
+  await assert.rejects(fs.stat(path.join(reader, "新增.txt")), {
+    code: "ENOENT",
+  });
+  await monitor.execute("update", {
+    workspaceId: "incoming",
+    paths: [""],
+    revision: "HEAD",
+  });
+  assert.equal(
+    (await monitor.execute("incoming", { workspaceId: "incoming" })).count,
+    0,
+  );
+});
 test("partial commit excludes unchecked sibling and preserves special paths", async () => {
   await fs.appendFile(path.join(root, "中文 @ 文件.txt"), "third\n");
   await fs.appendFile(path.join(root, "other.txt"), "not selected\n");

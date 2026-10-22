@@ -13,6 +13,7 @@ import {
 import type { FileEntry } from "../types";
 import { statusNames, letters } from "../i18n/zh-CN";
 import { filterFiles } from "../file-filter";
+import Select from "./Select";
 export function Badge({ file }: { file: FileEntry }) {
   const status =
     file.treeConflict || file.props === "conflicted"
@@ -90,18 +91,20 @@ export default function FilesPanel({
       <div className="filter-row">
         <span>
           <ListFilter size={13} />
-          <select
-            aria-label="状态筛选"
+          <Select
+            label="状态筛选"
             value={filter}
-            onChange={(e) => onFilter(e.target.value)}
-          >
-            <option value="all">全部状态</option>
-            {Object.entries(statusNames).map(([key, name]) => (
-              <option key={key} value={key}>
-                {name}
-              </option>
-            ))}
-          </select>
+            onValueChange={onFilter}
+            options={[
+              { value: "all", label: "全部状态" },
+              ...Object.entries(statusNames)
+                .filter(([value]) => !["added", "normal"].includes(value))
+                .map(([value, label]) => ({
+                  value,
+                  label: value === "modified" ? "修改" : label,
+                })),
+            ]}
+          />
         </span>
         <span>{visible.length.toLocaleString("zh-CN")} 个文件</span>
       </div>

@@ -7,6 +7,8 @@ import {
   ArrowUpFromLine,
 } from "lucide-react";
 import Dialog from "./Dialog";
+import Select from "./Select";
+import { normalizeUpdateResult } from "../update-result";
 import { Badge } from "./FilesPanel";
 import type { Workspace, FileEntry, Plan, Conflict, Backup } from "../types";
 import { bridge, unwrap } from "../client";
@@ -69,13 +71,27 @@ export default function Operations({
       { name: string; path: string; directory: boolean }[]
     >([]),
     [selectedPaths, setSelectedPaths] = useState(paths),
-    [keepLocks, setKeepLocks] = useState(false);
+    [keepLocks, setKeepLocks] = useState(false),
+    [commitResult, setCommitResult] = useState<{
+      output: string;
+      paths: string[];
+    } | null>(null),
+    [updateResult, setUpdateResult] = useState<{
+      output: string;
+      files: { path: string; status: string; conflict: boolean }[];
+    } | null>(null);
   const first = paths[0] || "";
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true);
     try {
-      await action();
-      onClose();
+      const response = await action();
+      if (kind === "commit") {
+        setCommitResult(response as { output: string; paths: string[] });
+      } else if (kind === "update") {
+        setUpdateResult(normalizeUpdateResult(response));
+      } else {
+        onClose();
+      }
     } catch (e) {
       onError(e as Error);
     } finally {
@@ -134,6 +150,95 @@ export default function Operations({
       alive = false;
     };
   }, [kind, workspace.id, first]);
+  if (updateResult) {
+    const conflicts = updateResult.files.filter((file) => file.conflict).length;
+    const statusLabels: Record<string, string> = {
+      A: "新增",
+      D: "删除",
+      U: "更新",
+      G: "合并",
+      C: "冲突",
+      E: "已存在",
+      R: "替换",
+      B: "锁已解除",
+    };
+    return (
+      <Dialog title="更新结果" subtitle={workspace.name} onClose={onClose} wide>
+        <div className={conflicts ? "warning-box" : "commit-success-summary"}>
+          {conflicts ? <AlertTriangle size={22} /> : <Check size={22} />}
+          <div>
+            <strong>
+              {conflicts
+                ? `更新完成，${conflicts} 个路径需要解决冲突`
+                : "更新完成"}
+            </strong>
+            <p>
+              {updateResult.files.length
+                ? `本次涉及 ${updateResult.files.length} 个路径。`
+                : "没有文件变更。"}
+            </p>
+          </div>
+        </div>
+        {!!updateResult.files.length && (
+          <>
+            <h3 className="field-label">本次更新清单</h3>
+            <div className="commit-files">
+              {updateResult.files.map((file) => (
+                <div className="plan-file" key={file.path}>
+                  <span
+                    className={`badge ${file.conflict ? "conflict" : file.status === "A" ? "added" : file.status === "D" ? "deleted" : "modified"}`}
+                  >
+                    {file.status}
+                  </span>
+                  <span className="update-result-status">
+                    {statusLabels[file.status] || file.status}
+                  </span>
+                  <span>{file.path}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <footer>
+          <button className="button primary" onClick={onClose}>
+            完成
+          </button>
+        </footer>
+      </Dialog>
+    );
+  }
+  if (commitResult) {
+    return (
+      <Dialog title="提交成功" subtitle={workspace.name} onClose={onClose} wide>
+        <div className="commit-success-summary">
+          <Check size={22} />
+          <div>
+            <strong>已成功提交 {commitResult.paths.length} 个路径</strong>
+            <p>以下变更已提交到 SVN 仓库。</p>
+          </div>
+        </div>
+        <h3 className="field-label">提交说明</h3>
+        <p className="commit-success-message">{message}</p>
+        <h3 className="field-label">本次提交清单</h3>
+        <div className="commit-files">
+          {commitResult.paths.map((path) => {
+            const entry = plan?.entries.find((file) => file.path === path);
+            return (
+              <div className="plan-file" key={path}>
+                {entry ? <Badge file={entry} /> : <Check size={14} />}
+                <span>{path || "工作副本根目录"}</span>
+              </div>
+            );
+          })}
+        </div>
+        <footer>
+          <button className="button primary" onClick={onClose}>
+            完成
+          </button>
+        </footer>
+      </Dialog>
+    );
+  }
   const footer = (
     action: () => Promise<unknown>,
     label: string,
@@ -515,16 +620,18 @@ export default function Operations({
                   "请核对 SVN 属性或二进制文件的本地与远端版本。"}
               </pre>
               <label className="field-label">解决策略</label>
-              <select
-                className="text-input"
+              <Select
+                label="解决策略"
+                className="select-full"
                 value={accept}
-                onChange={(e) => setAccept(e.target.value)}
-              >
-                <option value="working">保留当前工作副本内容</option>
-                <option value="mine-full">使用本地内容</option>
-                <option value="theirs-full">使用远端内容</option>
-                <option value="base">使用 BASE</option>
-              </select>
+                onValueChange={setAccept}
+                options={[
+                  { value: "working", label: "保留当前工作副本内容" },
+                  { value: "mine-full", label: "使用本地内容" },
+                  { value: "theirs-full", label: "使用远端内容" },
+                  { value: "base", label: "使用 BASE" },
+                ]}
+              />
             </>
           )}
           {footer(

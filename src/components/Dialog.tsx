@@ -4,6 +4,7 @@ export default function Dialog({
   title,
   subtitle,
   wide,
+  className = "",
   children,
   onClose,
   busy = false,
@@ -11,6 +12,7 @@ export default function Dialog({
   title: string;
   subtitle?: string;
   wide?: boolean;
+  className?: string;
   children: ReactNode;
   onClose: () => void;
   busy?: boolean;
@@ -20,6 +22,7 @@ export default function Dialog({
     const previous = document.activeElement as HTMLElement;
     ref.current?.focus();
     const handler = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest(".select-content")) return;
       if (
         [...document.querySelectorAll('[role="dialog"]')].at(-1) !== ref.current
       )
@@ -71,7 +74,7 @@ export default function Dialog({
       }}
     >
       <section
-        className={`modal ${wide ? "wide" : ""}`}
+        className={`modal ${wide ? "wide" : ""} ${className}`}
         ref={ref}
         tabIndex={-1}
         role="dialog"

@@ -1,4 +1,5 @@
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+import "monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.css";
 import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
 import "monaco-editor/esm/vs/basic-languages/css/css.contribution";
 import "monaco-editor/esm/vs/basic-languages/html/html.contribution";
@@ -89,7 +90,7 @@ export default function Editor({
       ignoreTrimWhitespace: ignoreWhitespace,
       fontSize: 14,
       lineHeight: 24,
-      fontFamily: 'Consolas, "Cascadia Code", monospace',
+      fontFamily: 'Consolas, "Cascadia Code", "Microsoft YaHei UI", monospace',
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       renderOverviewRuler: false,

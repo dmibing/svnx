@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Envelope, Settings, Workspace, FileEntry, Task } from "./types";
 const hiddenTasks = new Set([
   "status",
+  "incoming",
   "info",
   "tree",
   "diff",
@@ -87,6 +88,10 @@ export async function run<T = unknown>(
   return promise;
 }
 interface State {
+  incomingUpdates: Record<
+    string,
+    { count?: number; checkedAt?: string; error?: string }
+  >;
   settings: Settings;
   workspaces: Workspace[];
   selectedId: string;
@@ -101,7 +106,10 @@ interface State {
   initialize: () => Promise<void>;
 }
 export const useClient = create<State>((set, get) => ({
+  incomingUpdates: {},
   settings: {
+    autoCheckUpdates: true,
+    updateCheckMinutes: 5,
     theme: "system",
     listWidth: 330,
     svnPath: "svn",
@@ -153,7 +161,15 @@ export const useClient = create<State>((set, get) => ({
 export function listen() {
   return bridge().onEvent((event) => {
     const state = useClient.getState();
-    if (event.type === "workspaces") {
+    if (event.type === "incoming") {
+      state.set({
+        incomingUpdates: {
+          ...state.incomingUpdates,
+          [String(event.workspaceId)]:
+            event.result as State["incomingUpdates"][string],
+        },
+      });
+    } else if (event.type === "workspaces") {
       const workspaces = event.workspaces as Workspace[];
       state.set({
         workspaces,

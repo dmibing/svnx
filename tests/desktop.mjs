@@ -107,15 +107,16 @@ try {
   await expect(page.getByText("4 个变更文件", { exact: true })).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveValue(
-    "modified",
+  await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveText(
+    "修改",
   );
   await expect(page.locator(".file-row")).toHaveCount(3);
   await expect(page.locator(".nav-item .count")).toHaveText("3");
   await expect(page.locator(".workspace-tabs .tab span").first()).toHaveText(
     "3",
   );
-  await page.getByRole("combobox", { name: "状态筛选" }).selectOption("all");
+  await page.getByRole("combobox", { name: "状态筛选" }).click();
+  await page.getByRole("option", { name: "全部状态", exact: true }).click();
   await expect(page.locator(".file-row")).toHaveCount(4);
   await expect(page.locator(".nav-item .count")).toHaveText("4");
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
@@ -177,20 +178,61 @@ try {
   await page
     .getByRole("button", { name: "提交 1 个路径", exact: true })
     .click();
+  await expect(
+    page.getByRole("heading", { name: "提交成功", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog").locator(".plan-file")).toContainText(
+    "路由.ts",
+  );
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "完成", exact: true })
+    .click();
   await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
   await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible();
+  await page
+    .locator(".workspace-actions")
+    .getByRole("button", { name: "更新", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "更新", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "更新结果", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "完成", exact: true })
+    .click();
   await page.getByRole("button", { name: /偏好设置/ }).click();
   await page.getByRole("button", { name: "深色", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("combobox", { name: "更新检测间隔" }).click();
+  await page.getByRole("option", { name: "每 10 分钟", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "更新检测间隔" })).toHaveText(
+    "每 10 分钟",
+  );
+  await page.getByRole("checkbox", { name: "自动检测", exact: true }).uncheck();
+  await expect(
+    page.getByRole("combobox", { name: "更新检测间隔" }),
+  ).toBeDisabled();
+  const monitorSettings = await page.evaluate(
+    async () => (await window.svnx.bootstrap()).data.settings,
+  );
+  expect(monitorSettings.autoCheckUpdates).toBe(false);
+  expect(monitorSettings.updateCheckMinutes).toBe(10);
   await page.getByRole("button", { name: "完成", exact: true }).click();
-  await expect(page.locator('.filter-row option[value="all"]')).toHaveCSS(
+  await page.getByRole("combobox", { name: "状态筛选" }).click();
+  await expect(page.locator(".select-content")).toHaveCSS(
     "background-color",
     "rgb(32, 32, 32)",
   );
-  await expect(page.locator('.filter-row option[value="all"]')).toHaveCSS(
+  await expect(page.locator(".select-content")).toHaveCSS(
     "color",
     "rgb(232, 232, 232)",
   );
+  await page.keyboard.press("Escape");
   const contrast = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
     const lum = (hex) => {
@@ -213,7 +255,7 @@ try {
   expect(Math.min(...contrast)).toBeGreaterThanOrEqual(4.5);
   await expect(page.locator(".file-name>span").first()).toHaveCSS(
     "font-size",
-    "13px",
+    "14px",
   );
   await page.screenshot({ path: "artifacts/desktop-dark.png" });
   await page.getByRole("button", { name: "版本历史", exact: true }).click();
@@ -221,11 +263,63 @@ try {
     timeout: 15000,
   });
   await expect(page.locator(".history-row").first()).toContainText("完善路由");
+  await expect(
+    page.getByRole("combobox", { name: "原始版本", exact: true }),
+  ).toHaveText("r1");
+  await page.getByRole("combobox", { name: "目标版本", exact: true }).click();
+  await page.getByRole("option", { name: "r1", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "目标版本", exact: true }),
+  ).toHaveText("r1");
   await expect(page.locator(".history-row").first()).toHaveCSS(
     "height",
     "58px",
   );
   await page.screenshot({ path: "artifacts/desktop-history.png" });
+  await page.locator(".workspace-tabs .tab").first().click();
+  await page.locator(".file-row").filter({ hasText: "README.md" }).click();
+  await page.getByRole("button", { name: "所选路径历史", exact: true }).click();
+  await expect(page.locator(".history-list .history-row")).toHaveCount(1);
+  await expect(page.locator(".filter-row")).toContainText("README.md");
+  await expect(page.locator(".history-list .history-row")).toContainText(
+    "初始化工作空间",
+  );
+  await page
+    .locator(".historical-path")
+    .filter({ hasText: "/README.md" })
+    .click();
+  await expect(page.locator(".historical-sidebar")).toBeVisible();
+  await page.getByRole("button", { name: "所选路径历史", exact: true }).click();
+  await expect(page.locator(".history-list .history-row")).toHaveCount(1);
+  await expect(page.locator(".historical-sidebar")).toHaveCount(0);
+  await page.locator(".workspace-tabs .tab").first().click();
+  await page.getByRole("combobox", { name: "状态筛选" }).click();
+  await page.getByRole("option", { name: "未跟踪", exact: true }).click();
+  await page.locator(".file-row").filter({ hasText: "新增.txt" }).click();
+  await page.getByRole("button", { name: "更多文件操作" }).click();
+  await page
+    .getByRole("button", { name: "添加到版本控制", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "添加", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveText(
+    "修改",
+  );
+  await expect(
+    page.locator(".file-row").filter({ hasText: "README.md" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".file-row").filter({ hasText: "新增.txt" }),
+  ).toBeVisible();
+  const addedFiles = await service.execute("status", {
+    workspaceId: "integration",
+  });
+  expect(addedFiles.find((file) => file.path === "新增.txt")?.status).toBe(
+    "added",
+  );
   const bridgeState = await page.evaluate(() => ({
     node: typeof window.require,
     bridge: typeof window.svnx,
@@ -236,6 +330,31 @@ try {
   const files = await service.execute("status", { workspaceId: "integration" });
   expect(files.some((f) => f.path === "路由.ts")).toBe(false);
   expect(files.some((f) => f.path === "README.md")).toBe(true);
+  const remoteWriter = path.join(directory, "remote-writer");
+  cli("svn", ["checkout", pathToFileURL(repo).href, remoteWriter]);
+  await fs.writeFile(path.join(remoteWriter, "远端新增.txt"), "remote file\n");
+  cli("svn", ["add", "远端新增.txt"], remoteWriter);
+  cli("svn", ["commit", "-m", "remote update"], remoteWriter);
+  await page.getByRole("button", { name: /偏好设置/ }).click();
+  await page.getByRole("checkbox", { name: "自动检测", exact: true }).check();
+  await expect(
+    page.getByRole("combobox", { name: "更新检测间隔" }),
+  ).toBeEnabled();
+  await page.getByRole("combobox", { name: "更新检测间隔" }).click();
+  await page.getByRole("option", { name: "每 5 分钟", exact: true }).click();
+  await page.getByRole("button", { name: "完成", exact: true }).click();
+  await expect(page.locator(".incoming-count")).toHaveText("1", {
+    timeout: 15000,
+  });
+  await assertFileNotDownloaded();
+  async function assertFileNotDownloaded() {
+    try {
+      await fs.stat(path.join(root, "远端新增.txt"));
+      throw new Error("自动检测不应下载文件");
+    } catch (error) {
+      expect(error.code).toBe("ENOENT");
+    }
+  }
   expect(errors).toEqual([]);
   console.log(
     JSON.stringify(
@@ -253,6 +372,8 @@ try {
           "只提交所选文件",
           "深色主题",
           "真实提交历史",
+          "远端更新数量与自动检测开关、间隔保存",
+          "新增与修改统一显示并保留状态标识",
           "C# 语法高亮",
           "自动定位首处差异",
           "紧凑历史行",

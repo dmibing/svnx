@@ -5,6 +5,7 @@
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
   "scripts": {
+    "start": "node scripts/desktop.mjs",
     "dev": "vite --host 127.0.0.1",
     "desktop": "node scripts/desktop.mjs",
     "build": "tsc --noEmit && vite build",
@@ -18,6 +19,7 @@
     "dist:portable": "npm run build && electron-builder --win portable --x64"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.4.1",
     "@tanstack/react-virtual": "^3.14.21",
     "fast-xml-parser": "^5.11.2",
     "iconv-lite": "^0.7.3",

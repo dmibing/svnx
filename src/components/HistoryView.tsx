@@ -3,6 +3,7 @@ import { Search, ChevronRight, FileCode2, ArrowLeft } from "lucide-react";
 import type { LogEntry, Workspace } from "../types";
 import { run } from "../client";
 import type { Comparison } from "./DiffView";
+import Select from "./Select";
 export default function HistoryView({
   workspace,
   scope,
@@ -33,7 +34,11 @@ export default function HistoryView({
       setEntries((previous) =>
         start === undefined ? next : [...previous, ...next],
       );
-      if (start === undefined) setSelected(next[0] || null);
+      if (start === undefined) {
+        setSelected(next[0] || null);
+        setOldRev(next[0] ? String(Math.max(0, next[0].revision - 1)) : "");
+        setNewRev(next[0] ? String(next[0].revision) : "");
+      }
       setHasMore(next.length === 100);
     } catch (e) {
       onError(e as Error);
@@ -46,6 +51,21 @@ export default function HistoryView({
     setSelected(null);
     void load();
   }, [workspace.id, scope]);
+  const revisionOptions = [
+    ...new Set([
+      0,
+      workspace.revision,
+      ...entries.map((entry) => entry.revision),
+      ...(selected
+        ? [Math.max(0, selected.revision - 1), selected.revision]
+        : []),
+    ]),
+  ]
+    .sort((a, b) => b - a)
+    .map((revision) => ({
+      value: String(revision),
+      label: `r${revision}`,
+    }));
   return (
     <>
       <section className="change-panel">
@@ -127,7 +147,9 @@ export default function HistoryView({
       <section className="diff-panel">
         {selected ? (
           <div className="revision-detail">
-            <div className="section-eyebrow">提交详情</div>
+            <div className="section-eyebrow">
+              所选提交 · r{selected.revision}
+            </div>
             <h2>{selected.message || "（无提交说明）"}</h2>
             <div className="revision-detail-meta">
               <span className="avatar">{selected.author[0]}</span>
@@ -136,21 +158,32 @@ export default function HistoryView({
               <code>r{selected.revision}</code>
             </div>
             <div className="revision-info">
-              <span>比较版本</span>
+              <div className="revision-compare-caption">
+                <strong>比较版本</strong>
+                <span>从原始版本到目标版本，选择下方文件查看差异</span>
+              </div>
               <div className="revision-inputs">
-                <input
-                  aria-label="原始版本"
-                  placeholder={String(selected.revision - 1)}
-                  value={oldRev}
-                  onChange={(e) => setOldRev(e.target.value)}
-                />
-                <span>→</span>
-                <input
-                  aria-label="目标版本"
-                  placeholder={String(selected.revision)}
-                  value={newRev}
-                  onChange={(e) => setNewRev(e.target.value)}
-                />
+                <div className="revision-choice">
+                  <span>原始版本</span>
+                  <Select
+                    label="原始版本"
+                    value={oldRev}
+                    onValueChange={setOldRev}
+                    options={revisionOptions}
+                  />
+                </div>
+                <span className="revision-arrow" aria-hidden="true">
+                  →
+                </span>
+                <div className="revision-choice">
+                  <span>目标版本</span>
+                  <Select
+                    label="目标版本"
+                    value={newRev}
+                    onValueChange={setNewRev}
+                    options={revisionOptions}
+                  />
+                </div>
               </div>
             </div>
             <h3>

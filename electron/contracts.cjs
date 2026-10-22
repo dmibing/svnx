@@ -34,6 +34,7 @@ const credentials = z
 const schemas = {
   info: z.object(root),
   status: z.object({ ...root, showIgnored: z.boolean().optional() }),
+  incoming: z.object(root),
   tree: z.object({ ...root, path: relative.default("") }),
   diff: z.object({
     ...root,

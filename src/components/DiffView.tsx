@@ -12,6 +12,7 @@ import {
 import type { Diff, FileEntry, Workspace } from "../types";
 import { run, bridge, unwrap } from "../client";
 import { Badge } from "./FilesPanel";
+import Select from "./Select";
 const Editor = lazy(() => import("../Editor"));
 export interface Comparison {
   path: string;
@@ -291,19 +292,21 @@ export default function DiffView({
       <div className="diff-footer">
         <span title={target}>{target}</span>
         <span>
-          <select
-            aria-label="文件编码"
+          <Select
+            label="文件编码"
             value={encoding}
-            onChange={(e) => setEncoding(e.target.value)}
-          >
-            <option value="auto">
-              {data?.encoding?.toUpperCase() || "自动编码"}
-            </option>
-            <option value="utf-8">UTF-8</option>
-            <option value="gb18030">GB18030</option>
-            <option value="utf-16le">UTF-16 LE</option>
-            <option value="utf-16be">UTF-16 BE</option>
-          </select>
+            onValueChange={setEncoding}
+            options={[
+              {
+                value: "auto",
+                label: data?.encoding?.toUpperCase() || "自动编码",
+              },
+              { value: "utf-8", label: "UTF-8" },
+              { value: "gb18030", label: "GB18030" },
+              { value: "utf-16le", label: "UTF-16 LE" },
+              { value: "utf-16be", label: "UTF-16 BE" },
+            ]}
+          />
           <span className="footer-divider" />
           {data?.eol || "LF"}
         </span>
