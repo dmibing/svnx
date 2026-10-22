@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { FileEntry } from "../types";
 import { statusNames, letters } from "../i18n/zh-CN";
+import { filterFiles } from "../file-filter";
 export function Badge({ file }: { file: FileEntry }) {
   const status =
     file.treeConflict || file.props === "conflicted"
@@ -58,14 +59,7 @@ export default function FilesPanel({
   setMenu: (v: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const visible = files.filter(
-    (f) =>
-      f.path.toLowerCase().includes(query.toLowerCase()) &&
-      (filter === "all" ||
-        (filter === "conflicted" &&
-          (f.treeConflict || f.props === "conflicted")) ||
-        f.status === filter),
-  );
+  const visible = filterFiles(files, query, filter);
   const virtual = useVirtualizer({
     count: visible.length,
     getScrollElement: () => ref.current,

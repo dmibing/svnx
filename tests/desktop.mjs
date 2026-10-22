@@ -111,8 +111,13 @@ try {
     "modified",
   );
   await expect(page.locator(".file-row")).toHaveCount(3);
+  await expect(page.locator(".nav-item .count")).toHaveText("3");
+  await expect(page.locator(".workspace-tabs .tab span").first()).toHaveText(
+    "3",
+  );
   await page.getByRole("combobox", { name: "状态筛选" }).selectOption("all");
   await expect(page.locator(".file-row")).toHaveCount(4);
+  await expect(page.locator(".nav-item .count")).toHaveText("4");
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
     timeout: 20000,
   });
@@ -124,6 +129,14 @@ try {
     .getByRole("textbox", { name: "搜索文件", exact: true })
     .fill("路由");
   await expect(page.locator(".file-row")).toHaveCount(1);
+  await expect(page.locator(".nav-item .count")).toHaveText("1");
+  await expect(page.locator(".workspace-tabs .tab span").first()).toHaveText(
+    "1",
+  );
+  await page
+    .getByRole("textbox", { name: "搜索文件", exact: true })
+    .fill("不存在的文件");
+  await expect(page.locator(".nav-item .count")).toHaveText("0");
   await page.getByRole("textbox", { name: "搜索文件", exact: true }).fill("");
   await page
     .locator(".file-row")

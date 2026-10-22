@@ -1,6 +1,6 @@
 # SVNX
 
-基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.2**，优先支持 Windows x64，界面使用简体中文。
+基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.3**，优先支持 Windows x64，界面使用简体中文。
 
 更新详情见 [更新记录](CHANGELOG.md)。
 

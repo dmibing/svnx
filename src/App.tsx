@@ -36,6 +36,7 @@ import {
   AuthDialog,
 } from "./components/ShellDialogs";
 import Dialog from "./components/Dialog";
+import { filterFiles } from "./file-filter";
 export default function App() {
   const state = useClient(),
     {
@@ -76,6 +77,7 @@ export default function App() {
     refreshLock = useRef(false);
   const dark =
     settings.theme === "dark" || (settings.theme === "system" && systemDark);
+  const visibleCount = filterFiles(changes, query, filter).length;
   const active = selected
     ? changes.find((f) => f.path === selected.path) ||
       (selected.status === "normal" ? selected : changes[0] || null)
@@ -384,7 +386,7 @@ export default function App() {
               }}
             >
               <GitBranch size={16} />
-              本地变更<span className="count">{changes.length}</span>
+              本地变更<span className="count">{visibleCount}</span>
             </button>
             <button
               className={`nav-item ${view === "history" ? "active" : ""}`}
@@ -517,7 +519,7 @@ export default function App() {
                   }}
                 >
                   <GitBranch size={14} />
-                  变更<span>{changes.length}</span>
+                  变更<span>{visibleCount}</span>
                 </button>
                 <button
                   className={`tab ${view === "history" ? "active" : ""}`}
