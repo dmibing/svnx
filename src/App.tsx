@@ -1,0 +1,856 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  Clock3,
+  Folder,
+  FolderOpen,
+  GitBranch,
+  History,
+  Loader2,
+  Monitor,
+  Moon,
+  PanelBottom,
+  Plus,
+  Settings2,
+  Sun,
+  X,
+  AlertTriangle,
+  MoreHorizontal,
+  ArrowLeft,
+} from "lucide-react";
+import { useClient, bridge, unwrap, run, listen } from "./client";
+import type { FileEntry, Credentials } from "./types";
+import { operationNames, errorHints } from "./i18n/zh-CN";
+import FilesPanel from "./components/FilesPanel";
+import DiffView, { type Comparison } from "./components/DiffView";
+import HistoryView from "./components/HistoryView";
+import Operations, { type Execute } from "./components/Operations";
+import {
+  SettingsDialog,
+  CheckoutDialog,
+  AuthDialog,
+} from "./components/ShellDialogs";
+import Dialog from "./components/Dialog";
+export default function App() {
+  const state = useClient(),
+    {
+      workspaces,
+      selectedId,
+      files,
+      settings,
+      tasks,
+      engine,
+      engineError,
+      booted,
+    } = state;
+  const current = workspaces.find((w) => w.id === selectedId) || null,
+    changes = files[selectedId] || [];
+  const [systemDark, setSystemDark] = useState(
+      matchMedia("(prefers-color-scheme: dark)").matches,
+    ),
+    [view, setView] = useState<"changes" | "history">("changes"),
+    [selected, setSelected] = useState<FileEntry | null>(null),
+    [checked, setChecked] = useState<string[]>([]),
+    [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("all"),
+    [menu, setMenu] = useState(false),
+    [modal, setModal] = useState<{ kind: string; paths: string[] } | null>(
+      null,
+    ),
+    [comparison, setComparison] = useState<Comparison | null>(null),
+    [historyScope, setHistoryScope] = useState(""),
+    [tasksOpen, setTasksOpen] = useState(false),
+    [refreshing, setRefreshing] = useState(false),
+    [error, setError] = useState<{ code?: string; message: string } | null>(
+      null,
+    ),
+    [toast, setToast] = useState(""),
+    [listWidth, setListWidth] = useState(settings.listWidth);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    dragging = useRef(false),
+    refreshLock = useRef(false);
+  const dark =
+    settings.theme === "dark" || (settings.theme === "system" && systemDark);
+  const active = selected
+    ? changes.find((f) => f.path === selected.path) ||
+      (selected.status === "normal" ? selected : changes[0] || null)
+    : changes[0] || null;
+  const activeTasks = tasks.filter(
+    (t) =>
+      t.workspaceId === selectedId && ["queued", "running"].includes(t.state),
+  );
+  const onError = useCallback((e: Error & { code?: string }) => {
+    if (e.code === "CANCELLED") return;
+    setError({ code: e.code, message: e.message });
+  }, []);
+  const notify = (text: string) => {
+    setToast(text);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setToast(""), 3500);
+  };
+  const refresh = useCallback(async () => {
+    if (!selectedId || refreshLock.current || !engine) return;
+    refreshLock.current = true;
+    setRefreshing(true);
+    try {
+      await useClient.getState().refresh(selectedId);
+    } catch (e) {
+      onError(e as Error);
+    } finally {
+      refreshLock.current = false;
+      setRefreshing(false);
+    }
+  }, [selectedId, engine, onError]);
+  const execute: Execute = async (method, params = {}) => {
+    const payload = { workspaceId: selectedId, ...params };
+    try {
+      const result = await run(method, payload);
+      if (
+        ![
+          "status",
+          "info",
+          "diff",
+          "tree",
+          "log",
+          "properties",
+          "conflict",
+          "backups",
+          "commitPlan",
+          "revertPlan",
+        ].includes(method)
+      ) {
+        notify(`${operationNames[method] || method}完成`);
+        if (["commit", "revert", "delete", "move"].includes(method)) {
+          setChecked([]);
+          setSelected(null);
+        }
+        if (selectedId) void refresh();
+      }
+      return result;
+    } catch (e) {
+      const problem = e as Error & { code?: string };
+      throw e;
+    }
+  };
+  useEffect(() => {
+    void state.initialize().catch(onError);
+    if (!window.svnx) return;
+    return listen();
+  }, []);
+  useEffect(() => {
+    setSelected(null);
+    setChecked([]);
+    setQuery("");
+    setFilter("all");
+    setComparison(null);
+    setView("changes");
+    setHistoryScope("");
+    setError(null);
+    if (selectedId) void refresh();
+  }, [selectedId, engine]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }, [dark]);
+  useEffect(() => {
+    setListWidth(settings.listWidth);
+  }, [settings.listWidth]);
+  useEffect(() => {
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const change = () => setSystemDark(media.matches);
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      if (dragging.current) {
+        const sidebar =
+          document.querySelector(".sidebar")?.getBoundingClientRect().width ||
+          216;
+        setListWidth(Math.max(280, Math.min(520, e.clientX - sidebar)));
+      }
+    };
+    const end = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.classList.remove("resizing");
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+    };
+  }, []);
+  useEffect(() => {
+    if (!booted || listWidth === settings.listWidth) return;
+    const id = setTimeout(() => {
+      void bridge()
+        .settings({ listWidth })
+        .then(unwrap)
+        .then((settings) => useClient.getState().set({ settings }))
+        .catch(onError);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [listWidth, booted]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (document.querySelector("[role=dialog]")) return;
+      if (e.key === "F5") {
+        e.preventDefault();
+        void refresh();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        openCommit();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        setModal({ kind: "settings", paths: [] });
+      }
+      if (e.key === "Escape") setMenu(false);
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  });
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+  const closeModal = useCallback(() => setModal(null), []);
+  const openCommit = () => {
+    const paths = (
+      checked.length ? changes.filter((f) => checked.includes(f.path)) : changes
+    )
+      .filter(
+        (f) =>
+          ![
+            "unversioned",
+            "ignored",
+            "conflicted",
+            "missing",
+            "obstructed",
+            "incomplete",
+          ].includes(f.status) &&
+          !f.treeConflict &&
+          f.props !== "conflicted",
+      )
+      .map((f) => f.path);
+    if (!paths.length) {
+      notify("请先选择可提交的变更；未跟踪文件需先添加，冲突需先解决。");
+      return;
+    }
+    setModal({ kind: "commit", paths });
+  };
+  const openWorkspace = () => {
+    void bridge()
+      .openWorkspace()
+      .then(unwrap)
+      .then((w) => {
+        if (w) useClient.getState().set({ selectedId: w.id });
+      })
+      .catch(onError);
+  };
+  const action = (kind: string) => {
+    if (!current) return;
+    const paths = checked.length ? checked : active ? [active.path] : [];
+    if (
+      kind === "browse" ||
+      kind === "cleanup" ||
+      kind === "backups" ||
+      kind === "remove"
+    ) {
+      setModal({ kind, paths: [] });
+      return;
+    }
+    if (kind === "updateSelected") {
+      setModal({ kind: "update", paths: paths.length ? paths : [""] });
+      return;
+    }
+    if (kind === "reveal") {
+      void bridge()
+        .reveal({ workspaceId: current.id, path: paths[0] })
+        .then(unwrap)
+        .catch(onError);
+      return;
+    }
+    if (kind === "history") {
+      setHistoryScope(paths[0] || "");
+      setView("history");
+      setComparison(null);
+      return;
+    }
+    if (!paths.length) {
+      notify("请先选择文件或使用“浏览文件”选择目录。");
+      return;
+    }
+    if (
+      ["move", "properties", "conflict"].includes(kind) &&
+      paths.length !== 1
+    ) {
+      notify("此操作需要只选择一个路径。");
+      return;
+    }
+    setModal({ kind, paths });
+  };
+  return (
+    <div className="app-shell">
+      <header className="titlebar">
+        <div className="wordmark">
+          <img src="./brand.png" className="app-icon" alt="SVNX" />
+          svnx
+        </div>
+        <div className="titlebar-right">
+          <span className="demo-tag">
+            <span className="status-dot" />
+            0.1.0
+          </span>
+          <button
+            className="icon-button"
+            title="使用帮助"
+            onClick={() => setModal({ kind: "help", paths: [] })}
+          >
+            <CircleHelp size={16} />
+          </button>
+        </div>
+      </header>
+      <div className="app-body">
+        <aside className="sidebar">
+          <div className="sidebar-label">
+            工作副本
+            <button
+              className="icon-button"
+              title="打开已有工作副本"
+              disabled={!engine}
+              onClick={openWorkspace}
+            >
+              <Plus size={15} />
+            </button>
+          </div>
+          <nav className="projects">
+            {workspaces.map((w) => (
+              <button
+                key={w.id}
+                className={`project ${w.id === selectedId ? "active" : ""}`}
+                onClick={() => state.set({ selectedId: w.id })}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  state.set({ selectedId: w.id });
+                  setModal({ kind: "remove", paths: [] });
+                }}
+                title={w.path}
+              >
+                <FolderOpen size={17} />
+                <span>{w.name}</span>
+                <span className="count">
+                  {files[w.id]
+                    ? files[w.id].length || <Check size={12} />
+                    : "—"}
+                </span>
+              </button>
+            ))}
+          </nav>
+          <button
+            className="checkout-link"
+            disabled={!engine}
+            onClick={openWorkspace}
+          >
+            <FolderOpen size={14} />
+            打开已有工作副本
+          </button>
+          <button
+            className="checkout-link"
+            disabled={!engine}
+            onClick={() => setModal({ kind: "checkout", paths: [] })}
+          >
+            <Plus size={14} />
+            检出工作副本
+          </button>
+          <div className="sidebar-divider" />
+          <div className="sidebar-label">当前项目</div>
+          <nav>
+            <button
+              className={`nav-item ${view === "changes" ? "active" : ""}`}
+              disabled={!current}
+              onClick={() => {
+                setView("changes");
+                setComparison(null);
+              }}
+            >
+              <GitBranch size={16} />
+              本地变更<span className="count">{changes.length}</span>
+            </button>
+            <button
+              className={`nav-item ${view === "history" ? "active" : ""}`}
+              disabled={!current}
+              onClick={() => {
+                setView("history");
+                setHistoryScope("");
+                setComparison(null);
+              }}
+            >
+              <History size={16} />
+              版本历史
+            </button>
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="connection">
+              <span className={engine ? "status-dot" : "status-dot offline"} />
+              <span>{engine ? "引擎已就绪" : "引擎未就绪"}</span>
+              <span className="mono">{engine ? `SVN ${engine}` : ""}</span>
+            </div>
+            <button
+              className="nav-item"
+              onClick={() => setModal({ kind: "settings", paths: [] })}
+            >
+              <Settings2 size={16} />
+              偏好设置<span className="shortcut">Ctrl ,</span>
+            </button>
+            <div className="sidebar-footer">
+              <span>SVNX</span>
+              <span>0.1.0</span>
+            </div>
+          </div>
+        </aside>
+        <main className="main">
+          {!current ? (
+            <div className="welcome">
+              <img src="./brand.png" alt="SVNX" />
+              <h1>打开你的工作副本</h1>
+              <p>检查变更，浏览差异，让每次提交清晰有序。</p>
+              {!window.svnx ? (
+                <p className="inline-warning">
+                  当前为浏览器预览。请使用 Electron 桌面客户端操作 SVN。
+                </p>
+              ) : engineError ? (
+                <div className="welcome-warning">
+                  <AlertTriangle size={18} />
+                  <span>{engineError}</span>
+                  <button
+                    className="button"
+                    onClick={() => setModal({ kind: "settings", paths: [] })}
+                  >
+                    配置 SVN
+                  </button>
+                </div>
+              ) : (
+                <div className="welcome-actions">
+                  <button
+                    className="button primary"
+                    disabled={!booted}
+                    onClick={openWorkspace}
+                  >
+                    <FolderOpen size={15} />
+                    打开已有工作副本
+                  </button>
+                  <button
+                    className="button"
+                    disabled={!booted}
+                    onClick={() => setModal({ kind: "checkout", paths: [] })}
+                  >
+                    <Plus size={15} />
+                    从仓库检出
+                  </button>
+                </div>
+              )}
+              <small>所有 SVN 操作在本机执行，密码不会写入应用设置。</small>
+            </div>
+          ) : (
+            <>
+              <div className="workspace-heading">
+                <div>
+                  <div className="breadcrumb">
+                    工作副本
+                    <ChevronRight size={12} />
+                    <span>{current.name}</span>
+                  </div>
+                  <h1>
+                    {view === "changes" ? "本地变更" : "版本历史"}
+                    <span className="revision">r{current.revision}</span>
+                  </h1>
+                  <div className="workspace-path" title={current.url}>
+                    <Folder size={12} />
+                    <span>{current.path}</span>
+                  </div>
+                </div>
+                <div className="workspace-actions">
+                  <button
+                    className="button"
+                    disabled={!engine}
+                    onClick={() => setModal({ kind: "update", paths: [""] })}
+                  >
+                    <ArrowDownToLine size={15} />
+                    更新
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={!engine || !changes.length}
+                    onClick={openCommit}
+                  >
+                    <ArrowUpFromLine size={15} />
+                    提交变更
+                    <span className="button-count">
+                      {checked.length || changes.length}
+                    </span>
+                  </button>
+                  <button
+                    className="icon-button"
+                    title="移除工作副本记录"
+                    onClick={() => setModal({ kind: "remove", paths: [] })}
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="workspace-tabs">
+                <button
+                  className={`tab ${view === "changes" ? "active" : ""}`}
+                  onClick={() => {
+                    setView("changes");
+                    setComparison(null);
+                  }}
+                >
+                  <GitBranch size={14} />
+                  变更<span>{changes.length}</span>
+                </button>
+                <button
+                  className={`tab ${view === "history" ? "active" : ""}`}
+                  onClick={() => {
+                    setView("history");
+                    setHistoryScope("");
+                    setComparison(null);
+                  }}
+                >
+                  <Clock3 size={14} />
+                  历史记录
+                </button>
+                <button
+                  className="tab file-history"
+                  disabled={!active}
+                  onClick={() => action("history")}
+                >
+                  所选路径历史
+                </button>
+                <div className="tabs-meta">
+                  <span className="status-dot" />
+                  {refreshing
+                    ? "正在刷新"
+                    : activeTasks.length
+                      ? `${activeTasks.length} 个任务进行中`
+                      : "工作副本已就绪"}
+                </div>
+              </div>
+              {error && (
+                <div className="error-banner" role="alert">
+                  <AlertTriangle size={15} />
+                  <div>
+                    <strong>
+                      {errorHints[error.code || ""] || "操作未完成"}
+                    </strong>
+                    <details>
+                      <summary>查看详细信息</summary>
+                      <pre>{error.message}</pre>
+                    </details>
+                  </div>
+                  <button
+                    className="icon-button"
+                    title="关闭错误提示"
+                    onClick={() => setError(null)}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              <div
+                className="workbench"
+                style={
+                  { "--list-width": `${listWidth}px` } as React.CSSProperties
+                }
+              >
+                {view === "history" && !comparison ? (
+                  <HistoryView
+                    key={`${current.id}:${historyScope}`}
+                    workspace={current}
+                    scope={historyScope}
+                    onCompare={setComparison}
+                    onError={onError}
+                  />
+                ) : (
+                  <>
+                    <section className="change-panel">
+                      {comparison ? (
+                        <div className="historical-sidebar">
+                          <button
+                            className="button"
+                            onClick={() => setComparison(null)}
+                          >
+                            <ArrowLeft size={14} />
+                            返回历史记录
+                          </button>
+                          <h3>版本差异</h3>
+                          <p>
+                            r{comparison.oldRevision} → r
+                            {comparison.newRevision}
+                          </p>
+                          <p className="break-path">{comparison.path}</p>
+                        </div>
+                      ) : (
+                        <FilesPanel
+                          files={changes}
+                          selected={active?.path || ""}
+                          checked={checked}
+                          onSelect={(file) => {
+                            setSelected(file);
+                            setComparison(null);
+                          }}
+                          onCheck={setChecked}
+                          query={query}
+                          onQuery={setQuery}
+                          filter={filter}
+                          onFilter={setFilter}
+                          refresh={() => void refresh()}
+                          loading={refreshing}
+                          onAction={action}
+                          menu={menu}
+                          setMenu={setMenu}
+                        />
+                      )}
+                    </section>
+                    <div
+                      className="resize-handle"
+                      role="separator"
+                      aria-label="调整文件面板宽度"
+                      aria-orientation="vertical"
+                      tabIndex={0}
+                      onPointerDown={() => {
+                        dragging.current = true;
+                        document.body.classList.add("resizing");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowLeft")
+                          setListWidth((w) => Math.max(280, w - 20));
+                        if (e.key === "ArrowRight")
+                          setListWidth((w) => Math.min(520, w + 20));
+                      }}
+                    />
+                    <section className="diff-panel">
+                      <DiffView
+                        key={current.id}
+                        workspace={current}
+                        file={comparison ? null : active}
+                        dark={dark}
+                        comparison={comparison}
+                        onError={onError}
+                        onConflict={() => action("conflict")}
+                      />
+                    </section>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+          {tasksOpen && (
+            <div className="task-panel formal-tasks">
+              <div>
+                <strong>任务记录（最近 100 项）</strong>
+                <button
+                  className="icon-button"
+                  title="关闭任务记录"
+                  onClick={() => setTasksOpen(false)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="task-list">
+                {tasks
+                  .slice()
+                  .reverse()
+                  .map((t) => (
+                    <div className="task-row" key={t.id}>
+                      <span>
+                        {new Date(t.date || Date.now()).toLocaleTimeString(
+                          "zh-CN",
+                        )}
+                      </span>
+                      <strong>{operationNames[t.method] || t.method}</strong>
+                      <span className={`task-state ${t.state}`}>
+                        {
+                          {
+                            queued: "排队中",
+                            running: "正在执行",
+                            completed: "已完成",
+                            failed: "失败",
+                            cancelled: "已取消",
+                          }[t.state]
+                        }
+                      </span>
+                      {["queued", "running"].includes(t.state) && (
+                        <button
+                          onClick={() =>
+                            void bridge()
+                              .cancel(t.id)
+                              .then(unwrap)
+                              .catch(onError)
+                          }
+                        >
+                          取消
+                        </button>
+                      )}
+                      {t.error && (
+                        <details>
+                          <summary>详情</summary>
+                          <pre>{t.error.message}</pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                {!tasks.length && (
+                  <p className="muted-caption">暂无操作记录。</p>
+                )}
+              </div>
+            </div>
+          )}
+          <footer className="statusbar">
+            <button onClick={() => setTasksOpen(!tasksOpen)}>
+              <PanelBottom size={13} />
+              任务记录<span>{tasks.length}</span>
+            </button>
+            <span className="demo-footer">
+              {window.svnx
+                ? "本机执行 · 提交前核对范围 · 还原前备份"
+                : "浏览器预览"}
+            </span>
+            <button
+              title="切换主题"
+              onClick={() => {
+                const next = dark ? "light" : "dark";
+                void bridge()
+                  .settings({ theme: next })
+                  .then(unwrap)
+                  .then((settings) => state.set({ settings }))
+                  .catch(onError);
+              }}
+            >
+              {dark ? <Moon size={13} /> : <Sun size={13} />}
+              <span>
+                {settings.theme === "system"
+                  ? "跟随系统"
+                  : dark
+                    ? "深色"
+                    : "浅色"}
+              </span>
+            </button>
+          </footer>
+        </main>
+      </div>
+      {toast && (
+        <div className="toast" role="status">
+          <Check size={15} />
+          {toast}
+          <button
+            className="icon-button"
+            title="关闭提示"
+            onClick={() => setToast("")}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+      {modal?.kind === "settings" && (
+        <SettingsDialog
+          onClose={closeModal}
+          onError={onError}
+          onBackups={() => {
+            if (!current) {
+              notify("请先打开工作副本");
+              return;
+            }
+            setModal({ kind: "backups", paths: [] });
+          }}
+        />
+      )}
+      {modal?.kind === "checkout" && (
+        <CheckoutDialog
+          execute={execute}
+          onClose={closeModal}
+          onError={onError}
+        />
+      )}
+      {modal?.kind === "help" && (
+        <Dialog title="关于 SVNX" onClose={closeModal}>
+          <div className="help-brand">
+            <img src="./brand.png" alt="SVNX" className="app-icon" />
+            <strong>svnx</strong>
+            <span>0.1.0</span>
+          </div>
+          <p className="modal-caption">
+            Windows 优先的 Subversion
+            客户端。支持本地变更、提交、更新、历史、差异、属性、锁和冲突处理。
+          </p>
+          <div className="help-shortcuts">
+            <span>
+              刷新状态<kbd>F5</kbd>
+            </span>
+            <span>
+              提交变更<kbd>Ctrl + Enter</kbd>
+            </span>
+            <span>
+              偏好设置<kbd>Ctrl + ,</kbd>
+            </span>
+            <span>
+              关闭弹窗<kbd>Esc</kbd>
+            </span>
+          </div>
+          <p className="modal-note">
+            工作副本记录可移除，本地目录不会删除。分支、标签和合并将在后续版本提供。
+          </p>
+          <footer>
+            <button className="button primary" onClick={closeModal}>
+              关闭
+            </button>
+          </footer>
+        </Dialog>
+      )}
+      {modal &&
+        current &&
+        !["settings", "checkout", "help"].includes(modal.kind) && (
+          <Operations
+            key={`${current.id}:${modal.kind}:${modal.paths.join()}`}
+            kind={modal.kind}
+            workspace={current}
+            paths={modal.paths}
+            execute={execute}
+            onClose={closeModal}
+            onError={onError}
+            onSelect={(f) => {
+              setSelected(f);
+              setChecked([f.path]);
+              setView("changes");
+              setComparison(null);
+            }}
+          />
+        )}
+      {state.challenges[0] && (
+        <AuthDialog
+          key={state.challenges[0].id}
+          certificate={state.challenges[0].code === "CERTIFICATE"}
+          details={state.challenges[0].message}
+          onClose={state.challenges[0].cancel}
+          onSubmit={async (credentials) => {
+            try {
+              await state.challenges[0].retry(credentials);
+            } catch (e) {
+              onError(e as Error);
+              throw e;
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
