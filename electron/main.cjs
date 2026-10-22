@@ -376,7 +376,7 @@ function createWindow() {
     minHeight: 680,
     title: "SVNX",
     icon: path.join(__dirname, "../build/icon.ico"),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#202226" : "#ffffff",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#171717" : "#ffffff",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

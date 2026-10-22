@@ -24,7 +24,7 @@ port.on("message", async (event) => {
       id,
       method === "$checkout"
         ? params.directory
-        : service.roots.get(params.workspaceId) || "__configuration__",
+        : service.wcRoots.get(params.workspaceId) || "__configuration__",
       async (signal) => {
         send({ type: "task", id, state: "running" });
         if (method === "$inspect") return service.inspect(params.path);
@@ -34,6 +34,7 @@ port.on("message", async (event) => {
         }
         if (method === "$unregister") {
           service.roots.delete(params.id);
+          service.wcRoots.delete(params.id);
           return true;
         }
         if (method === "$version") return service.version(params.executable);

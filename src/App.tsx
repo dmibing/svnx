@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { version } from "../package.json";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -308,7 +309,7 @@ export default function App() {
         <div className="titlebar-right">
           <span className="demo-tag">
             <span className="status-dot" />
-            0.1.0
+            {version}
           </span>
           <button
             className="icon-button"
@@ -413,7 +414,7 @@ export default function App() {
             </button>
             <div className="sidebar-footer">
               <span>SVNX</span>
-              <span>0.1.0</span>
+              <span>{version}</span>
             </div>
           </div>
         </aside>
@@ -786,7 +787,7 @@ export default function App() {
           <div className="help-brand">
             <img src="./brand.png" alt="SVNX" className="app-icon" />
             <strong>svnx</strong>
-            <span>0.1.0</span>
+            <span>{version}</span>
           </div>
           <p className="modal-caption">
             Windows 优先的 Subversion

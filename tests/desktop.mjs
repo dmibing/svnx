@@ -22,6 +22,17 @@ function cli(command, args, cwd) {
   return r.stdout;
 }
 let app;
+const originalCsharp = [
+  "namespace Sample;",
+  "public class View",
+  "{",
+  ...Array.from({ length: 240 }, (_, i) =>
+    i === 150
+      ? '    public string Title => "Original title";'
+      : `    // unchanged line ${i}`,
+  ),
+  "}",
+].join("\n");
 try {
   cli("svnadmin", ["create", repo]);
   await fs.mkdir(root);
@@ -35,15 +46,16 @@ try {
     "设置.ts": 'export const theme = "system";\n',
     "README.md": "# 工作空间\n",
     "theme.css": ":root { color: #333; }\n",
+    "View.Designer.cs": originalCsharp,
   }))
     await fs.writeFile(path.join(root, name), text);
   await service.execute("add", {
     workspaceId: "integration",
-    paths: ["路由.ts", "设置.ts", "README.md", "theme.css"],
+    paths: ["路由.ts", "设置.ts", "README.md", "theme.css", "View.Designer.cs"],
   });
   const plan = await service.execute("commitPlan", {
     workspaceId: "integration",
-    paths: ["路由.ts", "设置.ts", "README.md", "theme.css"],
+    paths: ["路由.ts", "设置.ts", "README.md", "theme.css", "View.Designer.cs"],
   });
   await service.execute("commit", {
     workspaceId: "integration",
@@ -57,6 +69,10 @@ try {
   );
   await fs.appendFile(path.join(root, "README.md"), "\n支持真实 SVN 操作。\n");
   await fs.writeFile(path.join(root, "新增.txt"), "新文件\n");
+  await fs.writeFile(
+    path.join(root, "View.Designer.cs"),
+    originalCsharp.replace("Original title", "Updated title"),
+  );
   await fs.mkdir(dataRoot);
   const w = {
     ...(await service.inspect(root)),
@@ -88,7 +104,7 @@ try {
   await expect(page.getByRole("heading", { name: /本地变更/ })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible({
+  await expect(page.getByText("4 个变更文件", { exact: true })).toBeVisible({
     timeout: 20000,
   });
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
@@ -104,6 +120,31 @@ try {
   await expect(page.locator(".file-row")).toHaveCount(1);
   await page.getByRole("textbox", { name: "搜索文件", exact: true }).fill("");
   await page
+    .locator(".file-row")
+    .filter({ hasText: "View.Designer.cs" })
+    .click();
+  await expect(page.locator('[aria-label="文件差异编辑器"]')).toHaveAttribute(
+    "data-language",
+    "csharp",
+  );
+  await expect(
+    page.locator(".monaco-diff-editor .modified .view-lines"),
+  ).toContainText("Updated title", { timeout: 10000 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".monaco-diff-editor .modified .view-lines")
+        .evaluate((root) =>
+          [...root.querySelectorAll("span")].some(
+            (span) =>
+              span.textContent === "public" &&
+              getComputedStyle(span).color !== "rgb(0, 0, 0)",
+          ),
+        ),
+    )
+    .toBe(true);
+  await page.screenshot({ path: "artifacts/csharp-first-change.png" });
+  await page
     .getByRole("checkbox", { name: "选择 路由.ts", exact: true })
     .check();
   await page.getByRole("button", { name: "提交变更 1", exact: true }).click();
@@ -118,17 +159,45 @@ try {
     .getByRole("button", { name: "提交 1 个路径", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
-  await expect(page.getByText("2 个变更文件", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /偏好设置/ }).click();
   await page.getByRole("button", { name: "深色", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "完成", exact: true }).click();
+  const contrast = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    const lum = (hex) => {
+      const rgb = hex
+        .trim()
+        .replace("#", "")
+        .match(/../g)
+        .map((c) => parseInt(c, 16) / 255)
+        .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+    };
+    const background = lum(style.getPropertyValue("--bg"));
+    return ["--text", "--soft", "--muted"].map((name) => {
+      const l = lum(style.getPropertyValue(name));
+      return (
+        (Math.max(l, background) + 0.05) / (Math.min(l, background) + 0.05)
+      );
+    });
+  });
+  expect(Math.min(...contrast)).toBeGreaterThanOrEqual(4.5);
+  await expect(page.locator(".file-name>span").first()).toHaveCSS(
+    "font-size",
+    "13px",
+  );
   await page.screenshot({ path: "artifacts/desktop-dark.png" });
   await page.getByRole("button", { name: "版本历史", exact: true }).click();
   await expect(page.locator(".history-row").first()).toBeVisible({
     timeout: 15000,
   });
   await expect(page.locator(".history-row").first()).toContainText("完善路由");
+  await expect(page.locator(".history-row").first()).toHaveCSS(
+    "height",
+    "58px",
+  );
   await page.screenshot({ path: "artifacts/desktop-history.png" });
   const bridgeState = await page.evaluate(() => ({
     node: typeof window.require,
@@ -157,6 +226,10 @@ try {
           "只提交所选文件",
           "深色主题",
           "真实提交历史",
+          "C# 语法高亮",
+          "自动定位首处差异",
+          "紧凑历史行",
+          "深色正文对比度至少 4.5:1",
         ],
         browserErrors: errors,
       },

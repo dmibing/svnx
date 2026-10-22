@@ -45,6 +45,7 @@ class SvnService {
   constructor({ executable = "svn", backupDirectory }) {
     this.executable = executable;
     this.roots = new Map();
+    this.wcRoots = new Map();
     this.backup = new BackupStore(backupDirectory);
   }
   async version(executable = this.executable) {
@@ -63,10 +64,13 @@ class SvnService {
     ).info.entry;
     if (!info?.["wc-info"]?.["wcroot-abspath"])
       throw new SvnError("请选择已检出的 SVN 工作副本目录", "VALIDATION");
-    const root = await fs.realpath(info["wc-info"]["wcroot-abspath"]);
+    // 用户选择的目录是工作区边界；wcroot 仅用于共享管理数据与调度锁。
+    const selected = await fs.realpath(directory);
+    const wcRoot = await fs.realpath(info["wc-info"]["wcroot-abspath"]);
     return {
-      path: root,
-      name: path.basename(root),
+      path: selected,
+      wcRoot,
+      name: path.basename(selected),
       url: info.url,
       repositoryRoot: info.repository.root,
       uuid: info.repository.uuid,
@@ -75,6 +79,10 @@ class SvnService {
   }
   register(workspace) {
     this.roots.set(workspace.id, path.resolve(workspace.path));
+    this.wcRoots.set(
+      workspace.id,
+      path.resolve(workspace.wcRoot || workspace.path),
+    );
   }
   async guard(root, relative) {
     if (
@@ -307,6 +315,7 @@ class SvnService {
           repositoryRoot: entry.repository.root,
           uuid: entry.repository.uuid,
           path: root,
+          wcRoot: entry["wc-info"]["wcroot-abspath"],
         };
       }
       case "status":

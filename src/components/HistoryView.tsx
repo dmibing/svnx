@@ -81,8 +81,17 @@ export default function HistoryView({
                   setNewRev(String(r.revision));
                 }}
               >
-                <div>
+                <div className="history-primary">
                   <span className="history-revision">r{r.revision}</span>
+                  <strong title={r.message || "（无提交说明）"}>
+                    {r.message || "（无提交说明）"}
+                  </strong>
+                </div>
+                <div className="history-secondary">
+                  <span className="history-author">
+                    <span className="avatar">{r.author[0]}</span>
+                    {r.author}
+                  </span>
                   <small>
                     {new Date(r.date).toLocaleString("zh-CN", {
                       month: "2-digit",
@@ -91,13 +100,10 @@ export default function HistoryView({
                       minute: "2-digit",
                     })}
                   </small>
+                  <span className="history-path-count">
+                    {r.paths.length} 个路径
+                  </span>
                 </div>
-                <strong>{r.message || "（无提交说明）"}</strong>
-                <span className="history-author">
-                  <span className="avatar">{r.author[0]}</span>
-                  {r.author}
-                  <span>{r.paths.length} 个路径</span>
-                </span>
               </button>
             ))}
           {!entries.length && !loading && (

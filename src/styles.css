@@ -23,22 +23,22 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #202226;
-  --sidebar: #1a1c20;
-  --surface: #24262b;
-  --hover: #2c2f36;
-  --line: #33363e;
-  --muted: #858b97;
-  --text: #d5d8df;
-  --soft: #a0a7b4;
-  --blue: #8aa9ed;
-  --blue-bg: #2b3750;
-  --green: #7cbb99;
-  --green-bg: #263b32;
-  --red: #d99494;
-  --red-bg: #402d31;
-  --orange: #d5b271;
-  --orange-bg: #3b3426;
+  --bg: #171717;
+  --sidebar: #141414;
+  --surface: #202020;
+  --hover: #292929;
+  --line: #353535;
+  --muted: #a0a0a0;
+  --text: #e8e8e8;
+  --soft: #c0c0c0;
+  --blue: #a1baff;
+  --blue-bg: #25344d;
+  --green: #8ccfa5;
+  --green-bg: #1e3328;
+  --red: #eda8a8;
+  --red-bg: #3a2525;
+  --orange: #e3c080;
+  --orange-bg: #382e1c;
   --shadow: 0 16px 60px #0008;
   color: var(--text);
   background: var(--bg);
@@ -1893,4 +1893,163 @@ kbd {
 }
 .file-name {
   gap: 3px;
+}
+.history-row {
+  height: 58px;
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+.history-row > .history-primary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+.history-primary .history-revision {
+  flex-shrink: 0;
+}
+.history-primary strong {
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+.history-row > .history-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  font-size: 9px;
+  color: var(--muted);
+}
+.history-secondary .history-author {
+  margin: 0;
+  font-size: 9px;
+  gap: 5px;
+}
+.history-secondary .avatar {
+  width: 14px;
+  height: 14px;
+  font-size: 8px;
+}
+.history-secondary .history-path-count {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.history-secondary small {
+  font-size: 9px;
+  white-space: nowrap;
+}
+/* 桌面客户端字号层级：正文 13px，次级信息 11px，辅助标记不低于 10px。 */
+.project,
+.nav-item {
+  font-size: 13px;
+}
+.sidebar-label {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.checkout-link {
+  font-size: 12px;
+}
+.sidebar-footer,
+.connection,
+.connection .mono,
+.count,
+.shortcut,
+.demo-tag {
+  font-size: 10px;
+}
+.breadcrumb,
+.workspace-path,
+.tabs-meta {
+  font-size: 11px;
+}
+.button,
+.tab {
+  font-size: 12px;
+}
+.search-input input {
+  font-size: 12px;
+}
+.filter-row,
+.filter-row select,
+.file-list-heading,
+.list-summary {
+  font-size: 11px;
+}
+.file-name > span {
+  font-size: 13px;
+  line-height: 17px;
+}
+.file-name small {
+  font-size: 11px;
+  line-height: 14px;
+}
+.badge,
+.property-indicator,
+.button-count {
+  font-size: 10px;
+}
+.diff-heading > span:nth-child(2) {
+  font-size: 12px;
+}
+.diff-toolbar,
+.text-toggle {
+  font-size: 11px;
+}
+.editor-labels > span {
+  font-size: 11px;
+}
+.editor-labels code {
+  font-size: 10px;
+}
+.diff-footer,
+.diff-footer select,
+.statusbar button,
+.demo-footer {
+  font-size: 10px;
+}
+.history-primary strong {
+  font-size: 13px;
+  line-height: 18px;
+}
+.history-revision {
+  font-size: 11px;
+}
+.history-secondary,
+.history-secondary small,
+.history-secondary .history-author,
+.history-secondary .history-path-count {
+  font-size: 11px;
+}
+.history-secondary .avatar {
+  font-size: 9px;
+}
+.field-label,
+.modal-caption,
+.check-label,
+.settings-section p,
+.historical-path {
+  font-size: 12px;
+}
+.section-eyebrow,
+.modal-note,
+.muted-caption {
+  font-size: 11px;
+}
+.revision-detail h3,
+.settings-section h3 {
+  font-size: 13px;
 }

@@ -27,6 +27,7 @@ export interface Workspace {
   id: string;
   name: string;
   path: string;
+  wcRoot?: string;
   url: string;
   repositoryRoot: string;
   uuid: string;
