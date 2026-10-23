@@ -2556,3 +2556,75 @@ kbd {
 .sidebar-footer {
   align-items: center;
 }
+
+.workspace-menu {
+  position: relative;
+}
+.workspace-menu summary {
+  list-style: none;
+  cursor: pointer;
+}
+.workspace-menu summary::-webkit-details-marker {
+  display: none;
+}
+.workspace-dropdown {
+  top: 34px;
+  bottom: auto;
+  z-index: 40;
+}
+.ignore-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 20px;
+  max-height: 65vh;
+  overflow: auto;
+}
+.ignore-directories {
+  padding-right: 14px;
+  border-right: 1px solid var(--line);
+  overflow: auto;
+}
+.ignore-directory {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.ignore-directory:hover {
+  background: var(--hover);
+}
+.ignore-editor {
+  min-width: 0;
+}
+.ignore-text {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  font:
+    13px/1.6 Consolas,
+    monospace;
+}
+.ignore-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0;
+}
+.ignore-preview {
+  max-height: 160px;
+  overflow: auto;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.ignore-editor details {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.ignore-editor pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

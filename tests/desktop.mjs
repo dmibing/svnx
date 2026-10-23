@@ -602,6 +602,82 @@ try {
       expect(error.code).toBe("ENOENT");
     }
   }
+  await fs.writeFile(
+    path.join(root, "preview-only.svnxignoretest"),
+    "keep local",
+  );
+  await page.getByLabel("更多工作副本操作", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "忽略规则", exact: true }).click();
+  const ignoreDialog = page.getByRole("dialog", {
+    name: "忽略规则",
+    exact: true,
+  });
+  const ignoreText = ignoreDialog.getByRole("textbox", {
+    name: "忽略规则内容",
+    exact: true,
+  });
+  await expect(ignoreText).toBeEnabled();
+  await ignoreText.fill("*.svnxignoretest");
+  await ignoreDialog
+    .getByRole("button", { name: "预览匹配文件", exact: true })
+    .click();
+  await expect(ignoreDialog.getByLabel("忽略规则预览")).toContainText(
+    "preview-only.svnxignoretest",
+  );
+  await ignoreDialog
+    .getByRole("button", { name: "保存忽略规则", exact: true })
+    .click();
+  await expect(ignoreDialog).toContainText("已保存为目录属性变更");
+  let ruleState = await service.execute("ignoreRules", {
+    workspaceId: "integration",
+    directory: "",
+  });
+  expect(ruleState.own["svn:ignore"]).toContain("*.svnxignoretest");
+  const ignoredFiles = await service.execute("status", {
+    workspaceId: "integration",
+    showIgnored: true,
+  });
+  expect(
+    ignoredFiles.find((f) => f.path === "preview-only.svnxignoretest")?.status,
+  ).toBe("ignored");
+  await ignoreText.fill("");
+  await ignoreDialog
+    .getByRole("button", { name: "保存忽略规则", exact: true })
+    .click();
+  await expect(
+    ignoreDialog.getByRole("button", { name: "保存忽略规则", exact: true }),
+  ).toBeDisabled();
+  await ignoreDialog
+    .getByRole("combobox", { name: "忽略规则作用范围" })
+    .click();
+  await page
+    .getByRole("option", { name: "此目录及子目录", exact: true })
+    .click();
+  await ignoreText.fill("*.svnxglobaltest");
+  await ignoreDialog
+    .getByRole("button", { name: "保存忽略规则", exact: true })
+    .click();
+  await expect(
+    ignoreDialog.getByRole("button", { name: "保存忽略规则", exact: true }),
+  ).toBeDisabled();
+  await ignoreDialog
+    .locator(".ignore-directories")
+    .getByRole("button", { name: "highlight-fixtures", exact: true })
+    .click();
+  await expect(ignoreText).toHaveValue("");
+  await expect(ignoreText).toBeEnabled();
+  await ignoreDialog.locator("summary").click();
+  await expect(ignoreDialog.locator("details")).toContainText(
+    "*.svnxglobaltest",
+  );
+  await ignoreDialog
+    .getByRole("button", { name: "定位来源目录", exact: true })
+    .click();
+  await expect(ignoreText).toHaveValue(/\*\.svnxglobaltest/);
+  await page.screenshot({ path: "artifacts/ignore-rules.png" });
+  await ignoreDialog
+    .getByRole("button", { name: "关闭弹窗", exact: true })
+    .click();
   expect(errors).toEqual([]);
   console.log(
     JSON.stringify(

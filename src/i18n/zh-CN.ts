@@ -42,6 +42,7 @@ export const operationNames: Record<string, string> = {
   delete: "删除",
   move: "移动／重命名",
   ignore: "设置忽略",
+  saveIgnoreRules: "保存忽略规则",
   properties: "读取属性",
   setProperty: "修改属性",
   cleanup: "清理工作副本",

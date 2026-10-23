@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -27,6 +27,7 @@
     "fast-xml-parser": "^5.11.2",
     "iconv-lite": "^0.7.3",
     "lucide-react": "^0.468.0",
+    "minimatch": "^10.2.6",
     "monaco-editor": "^0.52.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

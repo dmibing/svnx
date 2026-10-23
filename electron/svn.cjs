@@ -8,6 +8,7 @@ const { run, SvnError, decodeOutput, nativeEncoding } = require("./runner.cjs");
 const { schemas } = require("./contracts.cjs");
 const { BackupStore } = require("./backup.cjs");
 const { updateResult } = require("./update-result.cjs");
+const { readRules, previewRules } = require("./ignore-rules.cjs");
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
@@ -15,6 +16,7 @@ const parser = new XMLParser({
   parseAttributeValue: false,
   trimValues: false,
   processEntities: true,
+  htmlEntities: true,
 });
 const array = (value) =>
   value === undefined ? [] : Array.isArray(value) ? value : [value];
@@ -545,6 +547,33 @@ class SvnService {
           ...new Set([...text.split(/\r?\n/).filter(Boolean), ...p.patterns]),
         ].join("\n");
         return this.setProperty(cli, target, "svn:ignore", next);
+      }
+      case "ignoreRules":
+      case "ignorePreview":
+      case "saveIgnoreRules": {
+        const target = await this.guard(root, p.directory);
+        if (!(await fs.stat(target)).isDirectory())
+          throw new SvnError("忽略规则只能设置在目录上", "VALIDATION");
+        const current = await readRules(xml, target, hash);
+        if (method === "ignoreRules") return current;
+        if (method === "ignorePreview")
+          return previewRules({
+            xml,
+            target,
+            property: p.property,
+            value: p.value,
+            signal,
+          });
+        if (current.fingerprint !== p.fingerprint)
+          throw new SvnError("规则已被其他操作修改，请重新加载后编辑", "STALE");
+        if (!p.value.trim() && !current.own[p.property]) return current;
+        await this.setProperty(
+          cli,
+          `${target}@`,
+          p.property,
+          p.value.trim() ? p.value.replaceAll("\r\n", "\n") : null,
+        );
+        return readRules(xml, target, hash);
       }
       case "properties": {
         const result = await xml([

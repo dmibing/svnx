@@ -34,6 +34,8 @@ const readMethods = new Set([
   "diff",
   "log",
   "properties",
+  "ignoreRules",
+  "ignorePreview",
   "conflict",
   "backups",
   "commitPlan",

@@ -88,6 +88,20 @@ const schemas = {
       .max(1000),
   }),
   properties: z.object({ ...root, path: relative }),
+  ignoreRules: z.object({ ...root, directory: relative.default("") }),
+  ignorePreview: z.object({
+    ...root,
+    directory: relative.default(""),
+    property: z.enum(["svn:ignore", "svn:global-ignores"]),
+    value: z.string().max(100000),
+  }),
+  saveIgnoreRules: z.object({
+    ...root,
+    directory: relative.default(""),
+    property: z.enum(["svn:ignore", "svn:global-ignores"]),
+    value: z.string().max(100000),
+    fingerprint: z.string().length(64),
+  }),
   setProperty: z.object({
     ...root,
     path: relative,

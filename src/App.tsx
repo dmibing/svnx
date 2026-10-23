@@ -38,6 +38,7 @@ import {
   AuthDialog,
 } from "./components/ShellDialogs";
 import Dialog from "./components/Dialog";
+import IgnoreRulesDialog from "./components/IgnoreRulesDialog";
 import { filterFiles, isVersionedChange, isCommittable } from "./file-filter";
 export default function App() {
   const state = useClient(),
@@ -145,6 +146,8 @@ export default function App() {
           "tree",
           "log",
           "properties",
+          "ignoreRules",
+          "ignorePreview",
           "conflict",
           "backups",
           "commitPlan",
@@ -252,6 +255,28 @@ export default function App() {
     },
     [],
   );
+  useEffect(() => {
+    const close = (event: Event) =>
+      document
+        .querySelectorAll<HTMLDetailsElement>(".workspace-menu[open]")
+        .forEach((menu) => {
+          if (!menu.contains(event.target as Node)) menu.open = false;
+        });
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape")
+        document
+          .querySelectorAll<HTMLDetailsElement>(".workspace-menu[open]")
+          .forEach((menu) => {
+            menu.open = false;
+          });
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", key);
+    };
+  }, []);
   const closeModal = useCallback(() => setModal(null), []);
   useEffect(() => {
     setChecked([]);
@@ -278,6 +303,7 @@ export default function App() {
     if (!current) return;
     const paths = checked.length ? checked : active ? [active.path] : [];
     if (
+      kind === "ignoreRules" ||
       kind === "browse" ||
       kind === "cleanup" ||
       kind === "backups" ||
@@ -573,13 +599,43 @@ export default function App() {
                     提交
                     <span className="button-count">{commitFiles.length}</span>
                   </button>
-                  <button
-                    className="icon-button"
-                    title="移除工作副本记录"
-                    onClick={() => setModal({ kind: "remove", paths: [] })}
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
+                  <details className="workspace-menu">
+                    <summary
+                      className="icon-button"
+                      title="更多工作副本操作"
+                      aria-label="更多工作副本操作"
+                    >
+                      <MoreHorizontal size={16} />
+                    </summary>
+                    <div
+                      className="dropdown workspace-dropdown"
+                      role="menu"
+                      aria-label="工作副本操作"
+                    >
+                      <button
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open");
+                          setModal({ kind: "ignoreRules", paths: [] });
+                        }}
+                      >
+                        忽略规则
+                      </button>
+                      <button
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open");
+                          setModal({ kind: "remove", paths: [] });
+                        }}
+                      >
+                        移除工作副本记录
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div className="workspace-tabs">
@@ -866,6 +922,13 @@ export default function App() {
           }}
         />
       )}
+      {modal?.kind === "ignoreRules" && current && (
+        <IgnoreRulesDialog
+          workspacePath={current.path}
+          execute={execute}
+          onClose={closeModal}
+        />
+      )}
       {modal?.kind === "checkout" && (
         <CheckoutDialog
           execute={execute}
@@ -910,7 +973,9 @@ export default function App() {
       )}
       {modal &&
         current &&
-        !["settings", "checkout", "help"].includes(modal.kind) && (
+        !["settings", "checkout", "help", "ignoreRules"].includes(
+          modal.kind,
+        ) && (
           <Operations
             key={`${current.id}:${modal.kind}:${modal.paths.join()}`}
             kind={modal.kind}
