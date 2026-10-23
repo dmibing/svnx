@@ -1,6 +1,8 @@
 # SVNX
 
-基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.6**，优先支持 Windows x64，界面使用简体中文。
+基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.7**，优先支持 Windows x64，界面使用简体中文。
+
+文件类型图标使用 [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)（MIT），通过构建脚本生成本地资源，许可证随应用包含。未知类型回退到通用文件图标。
 
 更新详情见 [更新记录](CHANGELOG.md)。
 

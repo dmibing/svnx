@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
+import FileIcon from "./FileIcon";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -223,7 +224,7 @@ export default function FilesPanel({
                     )
                   }
                 />
-                <FileCode2 className="file-icon" size={15} />
+                <FileIcon path={file.path} />
                 <div
                   className="file-name"
                   title={file.path || "工作副本根目录"}
@@ -307,6 +308,7 @@ export default function FilesPanel({
                 {[
                   ["add", "添加到版本控制"],
                   ["delete", "删除并保留备份"],
+                  ["deleteDirect", "直接删除（不备份）"],
                   ["move", "移动／重命名"],
                   ["ignore", "忽略未跟踪文件"],
                   ["properties", "查看／修改属性"],

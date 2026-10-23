@@ -13,6 +13,7 @@ import type { Diff, FileEntry, Workspace } from "../types";
 import { run, bridge, unwrap } from "../client";
 import { Badge } from "./FilesPanel";
 import Select from "./Select";
+import FileIcon from "./FileIcon";
 const Editor = lazy(() => import("../Editor"));
 export interface Comparison {
   path: string;
@@ -105,7 +106,7 @@ export default function DiffView({
   return (
     <>
       <div className="diff-heading">
-        <FileCode2 size={16} />
+        <FileIcon path={target || ""} />
         <span title={target}>
           {target?.split("/").at(-1) || "工作副本根目录"}
         </span>

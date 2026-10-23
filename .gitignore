@@ -30,3 +30,6 @@ svnx-diff-*/
 svnx-desktop-*/
 .DS_Store
 Thumbs.db
+
+/public/file-icons/
+/src/generated/file-icons.json

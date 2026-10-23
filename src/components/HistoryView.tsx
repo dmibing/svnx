@@ -5,6 +5,7 @@ import { run } from "../client";
 import type { Comparison } from "./DiffView";
 import Select from "./Select";
 import Dialog from "./Dialog";
+import FileIcon from "./FileIcon";
 export default function HistoryView({
   workspace,
   scope,
@@ -315,7 +316,7 @@ export default function HistoryView({
                   });
                 }}
               >
-                <FileCode2 size={15} />
+                <FileIcon path={p.path} />
                 <span>
                   {p.path}
                   {p.copyFrom && (

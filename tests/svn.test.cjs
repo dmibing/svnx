@@ -313,3 +313,32 @@ test("scheduler serializes overlapping roots and supports queued cancellation", 
   unblock();
   await d;
 });
+
+test("direct delete skips backups while normal delete keeps them", async () => {
+  const direct = "direct-delete.txt",
+    protectedFile = "backup-delete.txt";
+  for (const file of [direct, protectedFile])
+    await fs.writeFile(path.join(root, file), "local changes\n");
+  await exec("add", { paths: [direct, protectedFile] });
+  const original = service.backup.create.bind(service.backup);
+  let created = 0;
+  service.backup.create = async (...args) => {
+    created++;
+    return original(...args);
+  };
+  try {
+    const result = await exec("delete", { paths: [direct], backup: false });
+    assert.equal(result.backupId, undefined);
+    assert.equal(created, 0);
+    await assert.rejects(fs.stat(path.join(root, direct)), { code: "ENOENT" });
+    const backedUp = await exec("delete", { paths: [protectedFile] });
+    assert.ok(backedUp.backupId);
+    assert.equal(created, 1);
+    await assert.rejects(
+      exec("delete", { paths: [""], backup: false }),
+      /不能删除工作副本根目录/,
+    );
+  } finally {
+    service.backup.create = original;
+  }
+});

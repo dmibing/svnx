@@ -2451,3 +2451,35 @@ kbd {
   max-height: calc(100vh - 16px);
   overflow-y: auto;
 }
+
+.sidebar-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sidebar-rail {
+  width: 36px;
+  flex-shrink: 0;
+  padding: 24px 4px 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+}
+
+.type-file-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.type-file-icon img {
+  display: block;
+  object-fit: contain;
+}
+.type-file-icon .type-icon-dark {
+  display: none;
+}
+:root[data-theme="dark"] .type-file-icon .type-icon-dark {
+  display: block;
+}
+:root[data-theme="dark"] .type-file-icon .type-icon-light {
+  display: none;
+}

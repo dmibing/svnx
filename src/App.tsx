@@ -196,6 +196,8 @@ export default function App() {
     const move = (e: PointerEvent) => {
       if (dragging.current) {
         const sidebar =
+          document.querySelector(".sidebar-rail")?.getBoundingClientRect()
+            .width ??
           document.querySelector(".sidebar")?.getBoundingClientRect().width ??
           216;
         setListWidth(Math.max(280, Math.min(520, e.clientX - sidebar)));
@@ -331,23 +333,6 @@ export default function App() {
     <div className="app-shell">
       <header className="titlebar">
         <div className="wordmark">
-          <button
-            className="icon-button"
-            aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
-            aria-expanded={!sidebarCollapsed}
-            aria-controls="workspace-sidebar"
-            onClick={() => {
-              const next = !sidebarCollapsed;
-              setSidebarCollapsed(next);
-              localStorage.setItem("svnx.sidebarCollapsed", String(next));
-            }}
-          >
-            {sidebarCollapsed ? (
-              <PanelLeftOpen size={18} />
-            ) : (
-              <PanelLeftClose size={18} />
-            )}
-          </button>
           <img src="./brand.png" className="app-icon" alt="SVNX" />
           svnx
         </div>
@@ -366,21 +351,53 @@ export default function App() {
         </div>
       </header>
       <div className="app-body">
+        {sidebarCollapsed && (
+          <div className="sidebar-rail">
+            <button
+              className="icon-button"
+              aria-label="展开导航栏"
+              title="展开导航栏"
+              aria-expanded={false}
+              aria-controls="workspace-sidebar"
+              onClick={() => {
+                setSidebarCollapsed(false);
+                localStorage.setItem("svnx.sidebarCollapsed", "false");
+              }}
+            >
+              <PanelLeftOpen size={17} />
+            </button>
+          </div>
+        )}
         <aside
           id="workspace-sidebar"
           className="sidebar"
           style={sidebarCollapsed ? { display: "none" } : undefined}
         >
           <div className="sidebar-label">
-            工作副本
-            <button
-              className="icon-button"
-              title="打开已有工作副本"
-              disabled={!engine}
-              onClick={openWorkspace}
-            >
-              <Plus size={15} />
-            </button>
+            <span>工作副本</span>
+            <div className="sidebar-heading-actions">
+              <button
+                className="icon-button"
+                aria-label="收起导航栏"
+                title="收起导航栏"
+                aria-expanded={true}
+                aria-controls="workspace-sidebar"
+                onClick={() => {
+                  setSidebarCollapsed(true);
+                  localStorage.setItem("svnx.sidebarCollapsed", "true");
+                }}
+              >
+                <PanelLeftClose size={16} />
+              </button>
+              <button
+                className="icon-button"
+                title="打开已有工作副本"
+                disabled={!engine}
+                onClick={openWorkspace}
+              >
+                <Plus size={15} />
+              </button>
+            </div>
           </div>
           <nav className="projects">
             {workspaces.map((w) => (

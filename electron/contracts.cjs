@@ -72,7 +72,7 @@ const schemas = {
     credentials,
   }),
   add: z.object(targets),
-  delete: z.object(targets),
+  delete: z.object({ ...targets, backup: z.boolean().default(true) }),
   move: z.object({ ...root, path: relative, destination: relative }),
   ignore: z.object({
     ...root,

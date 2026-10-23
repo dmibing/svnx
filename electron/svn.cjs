@@ -496,9 +496,12 @@ class SvnService {
         const full = await Promise.all(p.paths.map((f) => this.guard(root, f)));
         if (full.includes(root))
           throw new SvnError("不能删除工作副本根目录", "VALIDATION");
-        const backup = await this.backup.create(root, full, "删除前备份");
+        const backup =
+          p.backup === false
+            ? null
+            : await this.backup.create(root, full, "删除前备份");
         return {
-          backupId: backup.id,
+          backupId: backup?.id,
           output: decodeOutput(
             await batch("delete", ["--force"], await targets()),
           ),

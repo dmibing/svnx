@@ -202,9 +202,25 @@ try {
         .locator(".monaco-slot")
         .evaluate((el) => el.getBoundingClientRect().width),
     )
-    .toBeGreaterThan(expandedWidth + 200);
+    .toBeGreaterThan(expandedWidth + 170);
   await page.getByRole("button", { name: "展开导航栏", exact: true }).click();
   await expect(page.locator("#workspace-sidebar")).toBeVisible();
+  await expect(
+    page.locator(".sidebar-label").getByRole("button", { name: "收起导航栏" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".titlebar").getByRole("button", { name: "收起导航栏" }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.file-row [data-file-icon="csharp"]'),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('.file-row [data-file-icon="csharp"] img:visible')
+        .evaluate((img) => img.complete && img.naturalWidth > 0),
+    )
+    .toBe(true);
   await page.evaluate(() => {
     const slot = document.querySelector(".monaco-slot");
     const editor = slot.querySelector(".monaco-diff-editor");
@@ -475,6 +491,37 @@ try {
     )
     .toBe(true);
   const remoteWriter = path.join(directory, "remote-writer");
+  await fs.writeFile(path.join(root, "unknown.svnxunknown"), "unknown type");
+  await service.execute("add", {
+    workspaceId: "integration",
+    paths: ["unknown.svnxunknown"],
+  });
+  await page
+    .getByRole("button", { name: "刷新状态 (F5)", exact: true })
+    .click();
+  const unknownRow = page
+    .locator(".file-row")
+    .filter({ hasText: "unknown.svnxunknown" });
+  await expect(unknownRow.locator('[data-file-icon="fallback"]')).toBeVisible();
+  await unknownRow.click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "直接删除（不备份）", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("不创建备份");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "直接删除", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await assertFileAbsent(path.join(root, "unknown.svnxunknown"));
+  async function assertFileAbsent(file) {
+    try {
+      await fs.stat(file);
+      throw new Error("Expected deleted fixture");
+    } catch (error) {
+      expect(error.code).toBe("ENOENT");
+    }
+  }
   cli("svn", ["checkout", pathToFileURL(repo).href, remoteWriter]);
   await fs.writeFile(path.join(remoteWriter, "远端新增.txt"), "remote file\n");
   cli("svn", ["add", "远端新增.txt"], remoteWriter);

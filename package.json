@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -8,7 +8,7 @@
     "start": "node scripts/desktop.mjs",
     "dev": "vite --host 127.0.0.1",
     "desktop": "node scripts/desktop.mjs",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/file-icons.mjs && tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "pack": "npm run build && electron-builder --win --dir",
     "test": "node --test tests/*.test.cjs",
@@ -16,7 +16,10 @@
     "build:icons": "node scripts/icons.mjs",
     "dist": "npm run build && electron-builder --win nsis --x64",
     "format": "prettier --write src electron scripts tests",
-    "dist:portable": "npm run build && electron-builder --win portable --x64"
+    "dist:portable": "npm run build && electron-builder --win portable --x64",
+    "prestart": "node scripts/file-icons.mjs",
+    "predev": "node scripts/file-icons.mjs",
+    "predesktop": "node scripts/file-icons.mjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.4.1",
@@ -37,6 +40,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^45.0.0",
     "electron-builder": "^26.0.0",
+    "material-icon-theme": "^5.39.0",
     "png-to-ico": "^3.0.2",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.10",

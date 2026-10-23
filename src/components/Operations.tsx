@@ -21,6 +21,7 @@ export const titles: Record<string, string> = {
   commit: "提交变更",
   revert: "还原本地修改",
   delete: "删除文件",
+  deleteDirect: "直接删除（不备份）",
   move: "移动／重命名",
   update: "更新工作副本",
   ignore: "设置忽略",
@@ -359,21 +360,23 @@ export default function Operations({
           {footer(() => execute("add", { paths }), "添加", !paths.length)}
         </>
       )}
-      {kind === "delete" && (
+      {(kind === "delete" || kind === "deleteDirect") && (
         <>
           <div className="warning-box">
             <AlertTriangle size={20} />
             <div>
               <strong>删除本地内容并标记为待提交删除。</strong>
               <p>
-                目录操作包含子目录。先备份现有内容，再执行删除；删除需要提交后才会影响远端。
+                {kind === "deleteDirect"
+                  ? "不创建备份，未提交的本地内容将被删除。目录操作包含子目录；删除需要提交后才会影响远端。"
+                  : "目录操作包含子目录。先备份现有内容，再执行删除；删除需要提交后才会影响远端。"}
               </p>
             </div>
           </div>
           <pre className="path-preview">{paths.join("\n")}</pre>
           {footer(
-            () => execute("delete", { paths }),
-            "备份并删除",
+            () => execute("delete", { paths, backup: kind !== "deleteDirect" }),
+            kind === "deleteDirect" ? "直接删除" : "备份并删除",
             !paths.length,
             true,
           )}
