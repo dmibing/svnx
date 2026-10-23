@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   MoreHorizontal,
   ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useClient, bridge, unwrap, run, listen } from "./client";
 import type { FileEntry, Credentials } from "./types";
@@ -53,6 +55,9 @@ export default function App() {
     changes = files[selectedId] || [];
   const [systemDark, setSystemDark] = useState(
       matchMedia("(prefers-color-scheme: dark)").matches,
+    ),
+    [sidebarCollapsed, setSidebarCollapsed] = useState(
+      () => localStorage.getItem("svnx.sidebarCollapsed") === "true",
     ),
     [view, setView] = useState<"changes" | "history">("changes"),
     [selected, setSelected] = useState<FileEntry | null>(null),
@@ -191,7 +196,7 @@ export default function App() {
     const move = (e: PointerEvent) => {
       if (dragging.current) {
         const sidebar =
-          document.querySelector(".sidebar")?.getBoundingClientRect().width ||
+          document.querySelector(".sidebar")?.getBoundingClientRect().width ??
           216;
         setListWidth(Math.max(280, Math.min(520, e.clientX - sidebar)));
       }
@@ -326,6 +331,23 @@ export default function App() {
     <div className="app-shell">
       <header className="titlebar">
         <div className="wordmark">
+          <button
+            className="icon-button"
+            aria-label={sidebarCollapsed ? "展开导航栏" : "收起导航栏"}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="workspace-sidebar"
+            onClick={() => {
+              const next = !sidebarCollapsed;
+              setSidebarCollapsed(next);
+              localStorage.setItem("svnx.sidebarCollapsed", String(next));
+            }}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+          </button>
           <img src="./brand.png" className="app-icon" alt="SVNX" />
           svnx
         </div>
@@ -344,7 +366,11 @@ export default function App() {
         </div>
       </header>
       <div className="app-body">
-        <aside className="sidebar">
+        <aside
+          id="workspace-sidebar"
+          className="sidebar"
+          style={sidebarCollapsed ? { display: "none" } : undefined}
+        >
           <div className="sidebar-label">
             工作副本
             <button
@@ -624,22 +650,25 @@ export default function App() {
                   { "--list-width": `${listWidth}px` } as React.CSSProperties
                 }
               >
-                {view === "history" && !comparison ? (
-                  <HistoryView
-                    key={`${current.id}:${historyScope}`}
-                    workspace={current}
-                    scope={historyScope}
-                    onRestore={(revision) =>
-                      setModal({
-                        kind: "update",
-                        paths: [historyScope],
-                        revision: String(revision),
-                      })
-                    }
-                    onCompare={setComparison}
-                    onError={onError}
-                  />
-                ) : (
+                {view === "history" && (
+                  <div style={{ display: comparison ? "none" : "contents" }}>
+                    <HistoryView
+                      key={`${current.id}:${historyScope}`}
+                      workspace={current}
+                      scope={historyScope}
+                      onRestore={(revision) =>
+                        setModal({
+                          kind: "update",
+                          paths: [historyScope],
+                          revision: String(revision),
+                        })
+                      }
+                      onCompare={setComparison}
+                      onError={onError}
+                    />
+                  </div>
+                )}
+                {(view !== "history" || comparison) && (
                   <>
                     <section className="change-panel">
                       {comparison ? (

@@ -3,6 +3,12 @@ import "monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.css";
 import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
 import "monaco-editor/esm/vs/basic-languages/css/css.contribution";
 import "monaco-editor/esm/vs/basic-languages/html/html.contribution";
+import "monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution";
+import "monaco-editor/esm/vs/basic-languages/scss/scss.contribution";
+import {
+  conf as htmlConfiguration,
+  language as htmlLanguage,
+} from "monaco-editor/esm/vs/basic-languages/html/html";
 import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
 import "monaco-editor/esm/vs/basic-languages/csharp/csharp.contribution";
 import "monaco-editor/esm/vs/basic-languages/xml/xml.contribution";
@@ -37,6 +43,58 @@ monaco.editor.defineTheme("svnx-dark", {
     "scrollbarSlider.hoverBackground": "#88888888",
   },
 });
+monaco.languages.register({ id: "vue", extensions: [".vue"] });
+monaco.languages.setLanguageConfiguration("vue", htmlConfiguration);
+monaco.languages.setMonarchTokensProvider("vue", {
+  ...htmlLanguage,
+  tokenizer: {
+    ...htmlLanguage.tokenizer,
+    root: [
+      [
+        /<script\b[^>]*>/,
+        { token: "tag", next: "@vueScript", nextEmbedded: "typescript" },
+      ],
+      [
+        /<style\b[^>]*\blang\s*=\s*["']scss["'][^>]*>/,
+        { token: "tag", next: "@vueStyle", nextEmbedded: "scss" },
+      ],
+      [
+        /<style\b[^>]*>/,
+        { token: "tag", next: "@vueStyle", nextEmbedded: "css" },
+      ],
+      [
+        /\{\{/,
+        {
+          token: "delimiter",
+          next: "@vueExpression",
+          nextEmbedded: "typescript",
+        },
+      ],
+      ...htmlLanguage.tokenizer.root,
+    ],
+    vueScript: [
+      [
+        /<\/script\s*>/,
+        { token: "@rematch", next: "@pop", nextEmbedded: "@pop" },
+      ],
+      [/[^<]+/, ""],
+      [/</, ""],
+    ],
+    vueStyle: [
+      [
+        /<\/style\s*>/,
+        { token: "@rematch", next: "@pop", nextEmbedded: "@pop" },
+      ],
+      [/[^<]+/, ""],
+      [/</, ""],
+    ],
+    vueExpression: [
+      [/\}\}/, { token: "delimiter", next: "@pop", nextEmbedded: "@pop" }],
+      [/[^}]+/, ""],
+      [/}/, ""],
+    ],
+  },
+});
 function language(path: string) {
   const ext = path.split(".").at(-1)?.toLowerCase();
   return (
@@ -49,7 +107,7 @@ function language(path: string) {
         css: "css",
         scss: "css",
         html: "html",
-        vue: "html",
+        vue: "vue",
         md: "markdown",
         cs: "csharp",
         csx: "csharp",
