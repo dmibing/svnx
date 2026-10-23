@@ -709,6 +709,51 @@ select optgroup {
 .file-row:hover {
   background: var(--surface);
 }
+.file-layout-actions {
+  display: flex;
+  margin-left: 8px;
+  gap: 2px;
+}
+.file-layout-actions .icon-button {
+  width: 24px;
+  height: 24px;
+}
+.file-layout-actions [aria-pressed="true"] {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+.tree-folder {
+  gap: 7px;
+}
+.tree-folder-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+.tree-folder-label span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tree-folder small {
+  color: var(--muted);
+}
+.file-list-heading > span:nth-child(3) {
+  margin-left: auto;
+}
+.file-row.tree-folder,
+.file-row.tree-file {
+  height: 32px;
+}
 .file-row.selected {
   background: var(--blue-bg);
   border-left-color: var(--blue);

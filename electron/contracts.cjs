@@ -73,6 +73,7 @@ const schemas = {
   }),
   add: z.object(targets),
   delete: z.object({ ...targets, backup: z.boolean().default(true) }),
+  untrack: z.object(targets),
   move: z.object({ ...root, path: relative, destination: relative }),
   ignore: z.object({
     ...root,

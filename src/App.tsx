@@ -162,7 +162,9 @@ export default function App() {
         ].includes(method)
       ) {
         notify(`${operationNames[method] || method}完成`);
-        if (["commit", "revert", "delete", "move"].includes(method)) {
+        if (
+          ["commit", "revert", "delete", "untrack", "move"].includes(method)
+        ) {
           setChecked([]);
           setSelected(null);
         }

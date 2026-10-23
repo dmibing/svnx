@@ -494,6 +494,33 @@ class SvnService {
             ),
           ),
         };
+      case "untrack": {
+        // Validate every target before scheduling any removal. Parent selections
+        // subsume descendants so SVN never processes the same entry twice.
+        const full = await Promise.all(p.paths.map((f) => this.guard(root, f)));
+        if (full.includes(root))
+          throw new SvnError("不能停止跟踪工作副本根目录", "VALIDATION");
+        const unique = [...new Set(p.paths)].sort(
+          (a, b) => a.length - b.length,
+        );
+        const chosen = [];
+        for (const target of unique) {
+          if (chosen.some((parent) => target.startsWith(`${parent}/`)))
+            continue;
+          await fs.lstat(await this.guard(root, target));
+          await xml(["info", "--xml", "--", await local(target)]);
+          chosen.push(target);
+        }
+        return {
+          output: decodeOutput(
+            await batch(
+              "delete",
+              ["--keep-local", "--force"],
+              await Promise.all(chosen.map(local)),
+            ),
+          ),
+        };
+      }
       case "delete": {
         const full = await Promise.all(p.paths.map((f) => this.guard(root, f)));
         if (full.includes(root))

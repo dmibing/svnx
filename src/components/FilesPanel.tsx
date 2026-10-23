@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import FileIcon from "./FileIcon";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -11,11 +11,17 @@ import {
   RotateCcw,
   MoreHorizontal,
   Folder,
+  List,
+  ListTree,
+  ChevronRight,
+  ChevronDown,
+  ChevronsDownUp,
 } from "lucide-react";
 import type { FileEntry } from "../types";
 import { statusNames, letters } from "../i18n/zh-CN";
 import { filterFiles } from "../file-filter";
 import Select from "./Select";
+import { buildFileTree, flattenFileTree } from "../file-tree";
 export function Badge({ file }: { file: FileEntry }) {
   const status =
     file.treeConflict || file.props === "conflicted"
@@ -64,6 +70,10 @@ export default function FilesPanel({
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const [layout, setLayout] = useState(() =>
+    localStorage.getItem("svnx.fileLayout") === "tree" ? "tree" : "list",
+  );
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [menuPoint, setMenuPoint] = useState({ x: 0, y: 0 });
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   useLayoutEffect(() => {
@@ -76,7 +86,9 @@ export default function FilesPanel({
         Math.min(menuPoint.y, window.innerHeight - rect.height - 8),
       ),
     });
-    menuRef.current.querySelector<HTMLButtonElement>("button")?.focus();
+    menuRef.current
+      .querySelector<HTMLButtonElement>("button")
+      ?.focus({ preventScroll: true });
   }, [menu, menuPoint]);
   useEffect(() => {
     if (!menu) return;
@@ -109,12 +121,44 @@ export default function FilesPanel({
   }, [menu, setMenu]);
   useEffect(() => {
     setMenu(false);
+    setCollapsed(new Set());
   }, [query, filter]);
-  const visible = filterFiles(files, query, filter);
+  const visible = useMemo(
+    () => filterFiles(files, query, filter),
+    [files, query, filter],
+  );
+  const tree = useMemo(() => buildFileTree(visible), [visible]);
+  const rows = useMemo(
+    () =>
+      layout === "tree"
+        ? flattenFileTree(tree, collapsed)
+        : visible.map((file) => ({
+            node: { path: file.path, file, children: [], entries: [file] },
+            depth: 0,
+          })),
+    [visible, tree, layout, collapsed, query],
+  );
+  const checkedSet = useMemo(() => new Set(checked), [checked]);
+  const toggleGroup = (entries: FileEntry[]) => {
+    const paths = new Set(entries.map((file) => file.path));
+    onCheck(
+      entries.every((file) => checkedSet.has(file.path))
+        ? checked.filter((path) => !paths.has(path))
+        : [...new Set([...checked, ...paths])],
+    );
+  };
+  const toggleDirectory = (path: string) =>
+    setCollapsed((previous) => {
+      const next = new Set(previous);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
   const virtual = useVirtualizer({
-    count: visible.length,
+    count: rows.length,
+    getItemKey: (index) => rows[index].node.path,
     getScrollElement: () => ref.current,
-    estimateSize: () => 44,
+    estimateSize: () => (layout === "tree" ? 32 : 44),
     overscan: 8,
   });
   return (
@@ -179,24 +223,134 @@ export default function FilesPanel({
           </small>
         </span>
         <span>状态</span>
+        <div
+          className="file-layout-actions"
+          role="group"
+          aria-label="文件显示方式"
+        >
+          {layout === "tree" && (
+            <button
+              className="icon-button"
+              title="折叠全部目录"
+              aria-label="折叠全部目录"
+              onClick={() => {
+                const paths: string[] = [];
+                const collect = (nodes: typeof tree) =>
+                  nodes.forEach((node) => {
+                    if (node.children.length) {
+                      paths.push(node.path);
+                      collect(node.children);
+                    }
+                  });
+                collect(tree);
+                setCollapsed(new Set(paths));
+              }}
+            >
+              <ChevronsDownUp size={14} />
+            </button>
+          )}
+          {(["list", "tree"] as const).map((mode) => (
+            <button
+              key={mode}
+              className="icon-button"
+              aria-label={mode === "tree" ? "文件树显示" : "平铺显示"}
+              title={mode === "tree" ? "文件树显示" : "平铺显示"}
+              aria-pressed={layout === mode}
+              onClick={() => {
+                setLayout(mode);
+                localStorage.setItem("svnx.fileLayout", mode);
+              }}
+            >
+              {mode === "tree" ? <ListTree size={14} /> : <List size={14} />}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="file-list" ref={ref}>
         <div style={{ height: virtual.getTotalSize(), position: "relative" }}>
           {virtual.getVirtualItems().map((row) => {
-            const file = visible[row.index];
+            const { node, depth } = rows[row.index];
+            const file = node.file;
+            if (layout === "tree" && node.children.length)
+              return (
+                <div
+                  key={node.path}
+                  className={`file-row tree-folder ${file && selected === file.path ? "selected" : ""}`}
+                  style={{
+                    position: "absolute",
+                    top: row.start,
+                    width: "100%",
+                    paddingLeft: 12 + depth * 16,
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    onSelect(file || node.entries[0]);
+                    onCheck(node.entries.map((entry) => entry.path));
+                    setMenuPoint({ x: event.clientX, y: event.clientY });
+                    setMenu(true);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`选择目录 ${node.path}`}
+                    checked={node.entries.every((entry) =>
+                      checkedSet.has(entry.path),
+                    )}
+                    ref={(input) => {
+                      if (input)
+                        input.indeterminate =
+                          node.entries.some((entry) =>
+                            checkedSet.has(entry.path),
+                          ) &&
+                          !node.entries.every((entry) =>
+                            checkedSet.has(entry.path),
+                          );
+                    }}
+                    onChange={() => toggleGroup(node.entries)}
+                  />
+                  <button
+                    className="tree-folder-label"
+                    aria-expanded={!collapsed.has(node.path)}
+                    title={node.path}
+                    onClick={() => toggleDirectory(node.path)}
+                  >
+                    {!collapsed.has(node.path) ? (
+                      <ChevronDown size={13} />
+                    ) : (
+                      <ChevronRight size={13} />
+                    )}
+                    <Folder size={15} />
+                    <span>{node.path.split("/").at(-1)}</span>
+                  </button>
+                  {file && (
+                    <button
+                      className="icon-button"
+                      title="查看目录属性变更"
+                      onClick={() => onSelect(file)}
+                    >
+                      <Badge file={file} />
+                    </button>
+                  )}
+                  <small>{node.entries.length}</small>
+                </div>
+              );
+            if (!file) return null;
             return (
               <div
-                key={file.id}
+                key={file.path}
                 style={{
                   position: "absolute",
                   top: 0,
                   left: 0,
                   width: "100%",
                   transform: `translateY(${row.start}px)`,
+                  ...(layout === "tree"
+                    ? { paddingLeft: 12 + depth * 16 }
+                    : {}),
                 }}
                 role="button"
                 tabIndex={0}
-                className={`file-row ${selected === file.path ? "selected" : ""}`}
+                className={`file-row ${layout === "tree" ? "tree-file" : ""} ${selected === file.path ? "selected" : ""}`}
                 onClick={() => onSelect(file)}
                 onKeyDown={(e) => {
                   if (
@@ -210,7 +364,7 @@ export default function FilesPanel({
                 onContextMenu={(e) => {
                   e.preventDefault();
                   onSelect(file);
-                  onCheck([file.path]);
+                  if (!checkedSet.has(file.path)) onCheck([file.path]);
                   setMenuPoint({ x: e.clientX, y: e.clientY });
                   setMenu(true);
                 }}
@@ -240,11 +394,13 @@ export default function FilesPanel({
                     )}
                     {file.lock && <em className="property-indicator">锁</em>}
                   </span>
-                  <small>
-                    {file.path.split("/").slice(0, -1).join("/") ||
-                      "项目根目录"}
-                    {file.copied ? " · 保留历史" : ""}
-                  </small>
+                  {layout !== "tree" && (
+                    <small>
+                      {file.path.split("/").slice(0, -1).join("/") ||
+                        "项目根目录"}
+                      {file.copied ? " · 保留历史" : ""}
+                    </small>
+                  )}
                 </div>
                 <Badge file={file} />
               </div>
@@ -311,6 +467,7 @@ export default function FilesPanel({
               >
                 {[
                   ["add", "添加到版本控制"],
+                  ["untrack", "停止跟踪（保留本地文件）"],
                   ["delete", "删除并保留备份"],
                   ["deleteDirect", "直接删除（不备份）"],
                   ["move", "移动／重命名"],
