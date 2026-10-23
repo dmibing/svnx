@@ -316,6 +316,7 @@ export default function FilesPanel({
                   ["move", "移动／重命名"],
                   ["ignore", "忽略未跟踪文件"],
                   ["properties", "查看／修改属性"],
+                ["history", "查看文件历史"],
                   ["conflict", "解决冲突"],
                   ["lock", "加锁"],
                   ["unlock", "解锁"],

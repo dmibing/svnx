@@ -413,7 +413,10 @@ try {
   await page.screenshot({ path: "artifacts/desktop-history.png" });
   await page.locator(".workspace-tabs .tab").first().click();
   await page.locator(".file-row").filter({ hasText: "README.md" }).click();
-  await page.getByRole("button", { name: "所选路径历史", exact: true }).click();
+  await page.getByRole("button", { name: "更多文件操作", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "查看文件历史", exact: true })
+    .click();
   await expect(page.locator(".history-list .history-row")).toHaveCount(1);
   await expect(page.locator(".filter-row")).toContainText("README.md");
   await expect(page.locator(".history-list .history-row")).toContainText(
@@ -424,7 +427,7 @@ try {
     .filter({ hasText: "/README.md" })
     .click();
   await expect(page.locator(".historical-sidebar")).toBeVisible();
-  await page.getByRole("button", { name: "所选路径历史", exact: true }).click();
+  await page.getByRole("button", { name: "返回历史记录", exact: true }).click();
   await expect(page.locator(".history-list .history-row")).toHaveCount(1);
   await expect(page.locator(".historical-sidebar")).toHaveCount(0);
   await page.locator(".workspace-tabs .tab").first().click();

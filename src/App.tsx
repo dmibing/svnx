@@ -313,7 +313,6 @@ export default function App() {
       setHistoryScope(target.path);
       setView("history");
       setComparison(null);
-      setComparison(null);
       return;
     }
     if (!paths.length) {
@@ -600,7 +599,7 @@ export default function App() {
                   变更<span>{visibleCount}</span>
                 </button>
                 <button
-                  className={`tab ${view === "history" && !historyScope ? "active" : ""}`}
+                  className={`tab ${view === "history" ? "active" : ""}`}
                   onClick={() => {
                     setView("history");
                     setHistoryScope("");
@@ -609,14 +608,6 @@ export default function App() {
                 >
                   <Clock3 size={14} />
                   历史记录
-                </button>
-                <button
-                  className={`tab file-history ${view === "history" && historyScope ? "active" : ""}`}
-                  disabled={!active}
-                  title={active ? `查看 ${active.path} 的历史` : "请先选择文件"}
-                  onClick={() => action("history")}
-                >
-                  所选路径历史
                 </button>
                 <div className="tabs-meta">
                   <span className="status-dot" />
