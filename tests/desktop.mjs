@@ -104,7 +104,7 @@ try {
   await expect(page.getByRole("heading", { name: /本地变更/ })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText("4 个变更文件", { exact: true })).toBeVisible({
+  await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveText(
@@ -117,8 +117,12 @@ try {
   );
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await page.getByRole("option", { name: "全部状态", exact: true }).click();
-  await expect(page.locator(".file-row")).toHaveCount(4);
-  await expect(page.locator(".nav-item .count")).toHaveText("4");
+  await expect(page.locator(".file-row")).toHaveCount(3);
+  await expect(page.locator(".nav-item .count")).toHaveText("3");
+  await expect(page.locator(".projects .count").first()).toHaveText("3");
+  await expect(
+    page.locator(".workspace-actions .button-count:not(.incoming-count)"),
+  ).toHaveText("3");
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
     timeout: 20000,
   });
@@ -212,7 +216,7 @@ try {
     .getByRole("button", { name: "完成", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
-  await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 个变更文件", { exact: true })).toBeVisible();
   await page
     .locator(".workspace-actions")
     .getByRole("button", { name: /^更新/ })
@@ -330,6 +334,11 @@ try {
   await page.locator(".workspace-tabs .tab").first().click();
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await page.getByRole("option", { name: "未跟踪", exact: true }).click();
+  await expect(page.getByText("1 个未跟踪文件", { exact: true })).toBeVisible();
+  await expect(page.locator(".nav-item .count")).toHaveText("0");
+  await expect(
+    page.locator(".workspace-actions .button-count:not(.incoming-count)"),
+  ).toHaveText("2");
   await page.locator(".file-row").filter({ hasText: "新增.txt" }).click();
   await page.getByRole("button", { name: "更多文件操作" }).click();
   await page

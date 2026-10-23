@@ -264,7 +264,7 @@ export default function FilesPanel({
         <span>
           {checked.length
             ? `已选择 ${checked.length} 个文件`
-            : `${files.length.toLocaleString("zh-CN")} 个变更文件`}
+            : `${visible.length.toLocaleString("zh-CN")} 个${filter === "unversioned" ? "未跟踪" : "变更"}文件`}
         </span>
         {loading && <span>正在刷新…</span>}
       </div>

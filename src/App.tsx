@@ -36,7 +36,7 @@ import {
   AuthDialog,
 } from "./components/ShellDialogs";
 import Dialog from "./components/Dialog";
-import { filterFiles } from "./file-filter";
+import { filterFiles, isVersionedChange, isCommittable } from "./file-filter";
 export default function App() {
   const state = useClient(),
     {
@@ -79,11 +79,15 @@ export default function App() {
     refreshLock = useRef(false);
   const dark =
     settings.theme === "dark" || (settings.theme === "system" && systemDark);
-  const visibleCount = filterFiles(changes, query, filter).length;
+  const visibleChanges = filterFiles(changes, query, filter);
+  const visibleCount = visibleChanges.filter(isVersionedChange).length;
+  const commitFiles = (
+    checked.length ? changes.filter((f) => checked.includes(f.path)) : changes
+  ).filter(isCommittable);
   const active = selected
-    ? changes.find((f) => f.path === selected.path) ||
-      (selected.status === "normal" ? selected : changes[0] || null)
-    : changes[0] || null;
+    ? visibleChanges.find((f) => f.path === selected.path) ||
+      (selected.status === "normal" ? selected : visibleChanges[0] || null)
+    : visibleChanges[0] || null;
   const activeTasks = tasks.filter(
     (t) =>
       t.workspaceId === selectedId && ["queued", "running"].includes(t.state),
@@ -242,24 +246,12 @@ export default function App() {
     [],
   );
   const closeModal = useCallback(() => setModal(null), []);
+  useEffect(() => {
+    setChecked([]);
+    setSelected(null);
+  }, [query, filter]);
   const openCommit = () => {
-    const paths = (
-      checked.length ? changes.filter((f) => checked.includes(f.path)) : changes
-    )
-      .filter(
-        (f) =>
-          ![
-            "unversioned",
-            "ignored",
-            "conflicted",
-            "missing",
-            "obstructed",
-            "incomplete",
-          ].includes(f.status) &&
-          !f.treeConflict &&
-          f.props !== "conflicted",
-      )
-      .map((f) => f.path);
+    const paths = commitFiles.map((f) => f.path);
     if (!paths.length) {
       notify("请先选择可提交的变更；未跟踪文件需先添加，冲突需先解决。");
       return;
@@ -381,7 +373,9 @@ export default function App() {
                 <span>{w.name}</span>
                 <span className="count">
                   {files[w.id]
-                    ? files[w.id].length || <Check size={12} />
+                    ? files[w.id].filter(isVersionedChange).length || (
+                        <Check size={12} />
+                      )
                     : "—"}
                 </span>
               </button>
@@ -548,14 +542,12 @@ export default function App() {
                   </button>
                   <button
                     className="button primary"
-                    disabled={!engine || !changes.length}
+                    disabled={!engine || !commitFiles.length}
                     onClick={openCommit}
                   >
                     <ArrowUpFromLine size={15} />
                     提交变更
-                    <span className="button-count">
-                      {checked.length || changes.length}
-                    </span>
+                    <span className="button-count">{commitFiles.length}</span>
                   </button>
                   <button
                     className="icon-button"
