@@ -153,6 +153,7 @@ select {
   font-weight: 400;
 }
 .titlebar-right {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -321,6 +322,17 @@ select {
 }
 .sidebar-footer > span:first-child {
   font-weight: 700;
+}
+.sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sidebar-brand img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .main {
   flex: 1;
@@ -2515,4 +2527,19 @@ kbd {
   margin-left: 6px;
   font-size: 11px;
   color: var(--muted);
+}
+
+.statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.footer-engine-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
 }

@@ -332,10 +332,6 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="titlebar">
-        <div className="wordmark">
-          <img src="./brand.png" className="app-icon" alt="SVNX" />
-          svnx
-        </div>
         <div className="titlebar-right">
           <span className="demo-tag">
             <span className="status-dot" />
@@ -468,18 +464,6 @@ export default function App() {
             </button>
           </nav>
           <div className="sidebar-bottom">
-            <div className="connection">
-              <span className={engine ? "status-dot" : "status-dot offline"} />
-              <span>SVN 版本</span>
-              <span
-                className="mono"
-                title={engine || engineError || "未检测到 SVN"}
-              >
-                {engine
-                  ? engine.match(/\d+\.\d+(?:\.\d+)?/)?.[0] || engine
-                  : "未检测到"}
-              </span>
-            </div>
             <button
               className="nav-item"
               onClick={() => setModal({ kind: "settings", paths: [] })}
@@ -488,7 +472,10 @@ export default function App() {
               偏好设置<span className="shortcut">Ctrl ,</span>
             </button>
             <div className="sidebar-footer">
-              <span>SVNX</span>
+              <span className="sidebar-brand">
+                <img src="./brand.png" alt="" aria-hidden="true" />
+                SVNX
+              </span>
               <span>{version}</span>
             </div>
           </div>
@@ -830,26 +817,40 @@ export default function App() {
                 ? "本机执行 · 提交前核对范围 · 还原前备份"
                 : "浏览器预览"}
             </span>
-            <button
-              title="切换主题"
-              onClick={() => {
-                const next = dark ? "light" : "dark";
-                void bridge()
-                  .settings({ theme: next })
-                  .then(unwrap)
-                  .then((settings) => state.set({ settings }))
-                  .catch(onError);
-              }}
-            >
-              {dark ? <Moon size={13} /> : <Sun size={13} />}
-              <span>
-                {settings.theme === "system"
-                  ? "跟随系统"
-                  : dark
-                    ? "深色"
-                    : "浅色"}
+            <div className="statusbar-right">
+              <span
+                className="footer-engine-status"
+                title={engine || engineError || "未检测到 SVN"}
+              >
+                <span
+                  className={engine ? "status-dot" : "status-dot offline"}
+                />
+                SVN{" "}
+                {engine
+                  ? engine.match(/\d+\.\d+(?:\.\d+)?/)?.[0] || engine
+                  : "未检测到"}
               </span>
-            </button>
+              <button
+                title="切换主题"
+                onClick={() => {
+                  const next = dark ? "light" : "dark";
+                  void bridge()
+                    .settings({ theme: next })
+                    .then(unwrap)
+                    .then((settings) => state.set({ settings }))
+                    .catch(onError);
+                }}
+              >
+                {dark ? <Moon size={13} /> : <Sun size={13} />}
+                <span>
+                  {settings.theme === "system"
+                    ? "跟随系统"
+                    : dark
+                      ? "深色"
+                      : "浅色"}
+                </span>
+              </button>
+            </div>
           </footer>
         </main>
       </div>
