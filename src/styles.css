@@ -2598,14 +2598,6 @@ kbd {
 .ignore-editor {
   min-width: 0;
 }
-.ignore-text {
-  width: 100%;
-  min-height: 180px;
-  resize: vertical;
-  font:
-    13px/1.6 Consolas,
-    monospace;
-}
 .ignore-editor-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2627,4 +2619,84 @@ kbd {
 .ignore-editor pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.modal.ignore-rules-modal {
+  width: 960px;
+  max-width: 100%;
+  height: min(660px, calc(100dvh - 60px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 22px;
+}
+.ignore-rules-modal > header,
+.ignore-rules-modal > .modal-footer {
+  flex-shrink: 0;
+}
+.ignore-rules-modal > .warning-box {
+  flex-shrink: 0;
+  max-height: 90px;
+  overflow: auto;
+}
+.ignore-rules-modal .ignore-layout {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.ignore-rules-modal .ignore-directories {
+  min-height: 0;
+  overflow-y: auto;
+}
+.ignore-rules-modal .ignore-editor {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 6px 4px 3px;
+}
+.ignore-rules-modal .ignore-editor > .field-label:first-child {
+  margin-top: 0;
+}
+.ignore-rules-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.ignore-rules-modal .modal-footer > .modal-note {
+  flex: 1;
+  min-width: 0;
+}
+
+.ignore-input-theme {
+  min-height: 0 !important;
+  width: 100%;
+  padding: 3px;
+}
+.ignore-input-theme .ignore-framework-textarea {
+  width: 100%;
+  height: 180px;
+  min-height: 140px;
+  max-height: 300px;
+  resize: vertical;
+}
+.ignore-rules-modal textarea.rt-TextAreaInput {
+  border: 0;
+  background: transparent;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  resize: none;
+  font:
+    13px/1.6 Consolas,
+    monospace;
+  white-space: pre;
+  overflow: auto;
+}
+.ignore-rules-modal textarea.rt-TextAreaInput:focus-visible {
+  outline: none;
+  box-shadow: none;
 }

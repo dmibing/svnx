@@ -1,6 +1,6 @@
 # SVNX
 
-基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.11**，优先支持 Windows x64，界面使用简体中文。
+基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.12**，优先支持 Windows x64，界面使用简体中文。
 
 忽略规则入口：工作副本右上角更多菜单 → 忽略规则。可按目录编辑仅此目录或可继承规则、预览匹配的未跟踪内容、查看来源；保存产生 SVN 目录属性变更，需手动提交。不创建或自动同步 `.svnignore` 文件，也不修改本机全局忽略配置。
 

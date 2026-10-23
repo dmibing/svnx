@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { version } from "../package.json";
 import {
   ArrowDownToLine,
@@ -38,7 +45,7 @@ import {
   AuthDialog,
 } from "./components/ShellDialogs";
 import Dialog from "./components/Dialog";
-import IgnoreRulesDialog from "./components/IgnoreRulesDialog";
+const IgnoreRulesDialog = lazy(() => import("./components/IgnoreRulesDialog"));
 import { filterFiles, isVersionedChange, isCommittable } from "./file-filter";
 export default function App() {
   const state = useClient(),
@@ -923,11 +930,20 @@ export default function App() {
         />
       )}
       {modal?.kind === "ignoreRules" && current && (
-        <IgnoreRulesDialog
-          workspacePath={current.path}
-          execute={execute}
-          onClose={closeModal}
-        />
+        <Suspense
+          fallback={
+            <Dialog title="忽略规则" onClose={closeModal}>
+              <p className="modal-caption">正在加载编辑器…</p>
+            </Dialog>
+          }
+        >
+          <IgnoreRulesDialog
+            dark={dark}
+            workspacePath={current.path}
+            execute={execute}
+            onClose={closeModal}
+          />
+        </Suspense>
       )}
       {modal?.kind === "checkout" && (
         <CheckoutDialog

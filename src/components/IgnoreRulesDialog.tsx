@@ -1,3 +1,6 @@
+import { TextArea } from "@radix-ui/themes/components/text-area";
+import { Theme } from "@radix-ui/themes/components/theme";
+import "@radix-ui/themes/styles.css";
 import { useEffect, useRef, useState } from "react";
 import Dialog from "./Dialog";
 import Select from "./Select";
@@ -18,10 +21,12 @@ export default function IgnoreRulesDialog({
   execute,
   onClose,
   workspacePath,
+  dark,
 }: {
   execute: Execute;
   onClose: () => void;
   workspacePath: string;
+  dark: boolean;
 }) {
   const [directory, setDirectory] = useState("");
   const [nodes, setNodes] = useState<
@@ -97,6 +102,7 @@ export default function IgnoreRulesDialog({
       title="忽略规则"
       subtitle="以文本编辑 SVN 目录属性；每行一条规则，保存后仍需手动提交。"
       wide
+      className="ignore-rules-modal"
       busy={busy}
       onClose={() => (dirty ? setDiscard(true) : onClose())}
     >
@@ -172,18 +178,29 @@ export default function IgnoreRulesDialog({
               此属性按空白分隔规则，文件名中包含空格时请使用仅此目录规则。
             </p>
           )}
-          <textarea
-            aria-label="忽略规则内容"
-            className="ignore-text"
-            value={value}
-            disabled={busy || !data}
-            spellCheck={false}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setMessage("");
-            }}
-            placeholder={"bin\nobj\nnode_modules\n*.user"}
-          />
+          <Theme
+            className="ignore-input-theme"
+            appearance={dark ? "dark" : "light"}
+            accentColor="blue"
+            grayColor="gray"
+            hasBackground={false}
+          >
+            <TextArea
+              aria-label="忽略规则内容"
+              className="ignore-framework-textarea"
+              size="2"
+              variant="surface"
+              radius="medium"
+              value={value}
+              disabled={busy || !data}
+              spellCheck={false}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setMessage("");
+              }}
+              placeholder={"bin\nobj\nnode_modules\n*.user"}
+            />
+          </Theme>
           <div className="ignore-editor-actions">
             <button
               className="button"

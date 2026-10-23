@@ -18,6 +18,10 @@ export default function Dialog({
   busy?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
+  const latest = useRef({ onClose, busy });
+  useEffect(() => {
+    latest.current = { onClose, busy };
+  }, [onClose, busy]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     ref.current?.focus();
@@ -27,9 +31,9 @@ export default function Dialog({
         [...document.querySelectorAll('[role="dialog"]')].at(-1) !== ref.current
       )
         return;
-      if (e.key === "Escape" && !busy) {
+      if (e.key === "Escape" && !latest.current.busy) {
         e.stopPropagation();
-        onClose();
+        latest.current.onClose();
       }
       if (e.key === "Tab") {
         const nodes = [
@@ -65,7 +69,7 @@ export default function Dialog({
       document.removeEventListener("keydown", handler, true);
       previous?.focus();
     };
-  }, [onClose, busy]);
+  }, []);
   return (
     <div
       className="modal-backdrop"

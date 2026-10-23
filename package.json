@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.4.1",
+    "@radix-ui/themes": "^3.3.0",
     "@tanstack/react-virtual": "^3.14.21",
     "fast-xml-parser": "^5.11.2",
     "iconv-lite": "^0.7.3",

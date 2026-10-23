@@ -606,6 +606,8 @@ try {
     path.join(root, "preview-only.svnxignoretest"),
     "keep local",
   );
+  for (let index = 0; index < 40; index++)
+    await fs.mkdir(path.join(root, `ignore-dir-${index}`));
   await page.getByLabel("更多工作副本操作", { exact: true }).click();
   await page.getByRole("menuitem", { name: "忽略规则", exact: true }).click();
   const ignoreDialog = page.getByRole("dialog", {
@@ -617,7 +619,41 @@ try {
     exact: true,
   });
   await expect(ignoreText).toBeEnabled();
-  await ignoreText.fill("*.svnxignoretest");
+  const originalViewport = await page.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  await page.setViewportSize({ width: 1024, height: 700 });
+  const geometry = await ignoreDialog.evaluate((el) => {
+    const editor = el.querySelector(".ignore-editor"),
+      textarea = el.querySelector("textarea"),
+      directories = el.querySelector(".ignore-directories");
+    return {
+      width: el.getBoundingClientRect().width,
+      height: el.getBoundingClientRect().height,
+      textWidth: textarea.getBoundingClientRect().width,
+      fits:
+        textarea.getBoundingClientRect().right <=
+        editor.getBoundingClientRect().right,
+      directoryScrolls: directories.scrollHeight > directories.clientHeight,
+      horizontalOverflow: editor.scrollWidth > editor.clientWidth,
+    };
+  });
+  expect(geometry.width).toBeGreaterThan(geometry.height);
+  expect(geometry.height).toBeLessThanOrEqual(640);
+  expect(geometry.textWidth).toBeGreaterThan(450);
+  expect(
+    geometry.fits && geometry.directoryScrolls && !geometry.horizontalOverflow,
+  ).toBe(true);
+  await ignoreText.click();
+  await ignoreText.pressSequentially("*.svnxignoretest");
+  await expect(ignoreText).toBeFocused();
+  await ignoreText.press("Enter");
+  await ignoreText.pressSequentially("*.anotherignore");
+  await expect(ignoreText).toHaveValue("*.svnxignoretest\n*.anotherignore");
+  await expect(ignoreText).toBeFocused();
+  await page.screenshot({ path: "artifacts/ignore-rules-compact.png" });
+  await page.setViewportSize(originalViewport);
   await ignoreDialog
     .getByRole("button", { name: "预览匹配文件", exact: true })
     .click();
