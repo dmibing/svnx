@@ -2437,3 +2437,12 @@ kbd {
 .history-context-menu button:focus-visible {
   background: var(--hover);
 }
+
+.file-context-menu {
+  position: fixed;
+  bottom: auto;
+  right: auto;
+  z-index: 200;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}

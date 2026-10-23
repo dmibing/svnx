@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -60,6 +61,54 @@ export default function FilesPanel({
   setMenu: (v: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuPoint, setMenuPoint] = useState({ x: 0, y: 0 });
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  useLayoutEffect(() => {
+    if (!menu || !menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    setMenuPosition({
+      x: Math.max(8, Math.min(menuPoint.x, window.innerWidth - rect.width - 8)),
+      y: Math.max(
+        8,
+        Math.min(menuPoint.y, window.innerHeight - rect.height - 8),
+      ),
+    });
+    menuRef.current.querySelector<HTMLButtonElement>("button")?.focus();
+  }, [menu, menuPoint]);
+  useEffect(() => {
+    if (!menu) return;
+    const outside = (event: Event) => {
+      if (
+        !menuRef.current?.contains(event.target as Node) &&
+        !triggerRef.current?.contains(event.target as Node)
+      )
+        setMenu(false);
+    };
+    const close = () => setMenu(false);
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape" || event.key === "Tab") {
+        setMenu(false);
+        if (event.key === "Escape") triggerRef.current?.focus();
+      }
+    };
+    window.addEventListener("pointerdown", outside);
+    window.addEventListener("scroll", outside, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("blur", close);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("pointerdown", outside);
+      window.removeEventListener("scroll", outside, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("blur", close);
+      window.removeEventListener("keydown", key);
+    };
+  }, [menu, setMenu]);
+  useEffect(() => {
+    setMenu(false);
+  }, [query, filter]);
   const visible = filterFiles(files, query, filter);
   const virtual = useVirtualizer({
     count: visible.length,
@@ -157,6 +206,7 @@ export default function FilesPanel({
                   e.preventDefault();
                   onSelect(file);
                   onCheck([file.path]);
+                  setMenuPoint({ x: e.clientX, y: e.clientY });
                   setMenu(true);
                 }}
               >
@@ -235,38 +285,52 @@ export default function FilesPanel({
           <button
             className="icon-button"
             title="更多文件操作"
+            ref={triggerRef}
             aria-expanded={menu}
-            onClick={() => setMenu(!menu)}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setMenuPoint({ x: rect.left, y: rect.bottom + 4 });
+              setMenu(!menu);
+            }}
           >
             <MoreHorizontal size={17} />
           </button>
-          {menu && (
-            <div className="dropdown">
-              {[
-                ["add", "添加到版本控制"],
-                ["delete", "删除并保留备份"],
-                ["move", "移动／重命名"],
-                ["ignore", "忽略未跟踪文件"],
-                ["properties", "查看／修改属性"],
-                ["conflict", "解决冲突"],
-                ["lock", "加锁"],
-                ["unlock", "解锁"],
-                ["updateSelected", "更新所选路径"],
-                ["cleanup", "清理工作副本"],
-                ["reveal", "在文件管理器中显示"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setMenu(false);
-                    onAction(id);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          {menu &&
+            createPortal(
+              <div
+                ref={menuRef}
+                className="dropdown file-context-menu"
+                role="menu"
+                aria-label="文件操作"
+                style={{ left: menuPosition.x, top: menuPosition.y }}
+              >
+                {[
+                  ["add", "添加到版本控制"],
+                  ["delete", "删除并保留备份"],
+                  ["move", "移动／重命名"],
+                  ["ignore", "忽略未跟踪文件"],
+                  ["properties", "查看／修改属性"],
+                  ["conflict", "解决冲突"],
+                  ["lock", "加锁"],
+                  ["unlock", "解锁"],
+                  ["updateSelected", "更新所选路径"],
+                  ["cleanup", "清理工作副本"],
+                  ["reveal", "在文件管理器中显示"],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    role="menuitem"
+                    onClick={() => {
+                      setMenu(false);
+                      onAction(id);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>,
+              document.body,
+            )}
         </div>
       </div>
     </>

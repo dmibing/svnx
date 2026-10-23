@@ -126,6 +126,29 @@ try {
   await expect(page.locator(".file-row").first()).toHaveCSS("height", "44px");
   await fs.mkdir("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/desktop-light.png" });
+  const firstFile = page.locator(".file-row").first();
+  const fileBounds = await firstFile.boundingBox();
+  await firstFile.click({ button: "right", position: { x: 90, y: 15 } });
+  const fileMenu = page.getByRole("menu", { name: "文件操作", exact: true });
+  await expect(fileMenu).toBeVisible();
+  const menuBounds = await fileMenu.boundingBox();
+  expect(Math.abs(menuBounds.x - (fileBounds.x + 90))).toBeLessThan(3);
+  expect(Math.abs(menuBounds.y - (fileBounds.y + 15))).toBeLessThan(3);
+  await page.getByRole("heading", { name: /本地变更/ }).click();
+  await expect(fileMenu).toHaveCount(0);
+  await page.getByRole("button", { name: "更多文件操作", exact: true }).click();
+  await expect(fileMenu).toBeVisible();
+  const viewport =
+    page.viewportSize() ||
+    (await page.evaluate(() => ({ width: innerWidth, height: innerHeight })));
+  const moreBounds = await fileMenu.boundingBox();
+  expect(moreBounds.y + moreBounds.height).toBeLessThanOrEqual(
+    viewport.height - 7,
+  );
+  await page.keyboard.press("Escape");
+  await expect(fileMenu).toHaveCount(0);
+  for (const checkbox of await page.locator(".file-row input:checked").all())
+    await checkbox.uncheck();
   await page
     .getByRole("textbox", { name: "搜索文件", exact: true })
     .fill("路由");
@@ -310,7 +333,7 @@ try {
   await page.locator(".file-row").filter({ hasText: "新增.txt" }).click();
   await page.getByRole("button", { name: "更多文件操作" }).click();
   await page
-    .getByRole("button", { name: "添加到版本控制", exact: true })
+    .getByRole("menuitem", { name: "添加到版本控制", exact: true })
     .click();
   await page
     .getByRole("dialog")
