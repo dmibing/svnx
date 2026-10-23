@@ -1,5 +1,6 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import type { ReactNode } from "react";
 
 export default function Select({
   value,
@@ -8,6 +9,7 @@ export default function Select({
   options,
   className = "",
   disabled = false,
+  icon,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -15,6 +17,7 @@ export default function Select({
   options: { value: string; label: string }[];
   className?: string;
   disabled?: boolean;
+  icon?: ReactNode;
 }) {
   return (
     <SelectPrimitive.Root
@@ -26,7 +29,14 @@ export default function Select({
         className={`select-trigger ${className}`}
         aria-label={label}
       >
-        <SelectPrimitive.Value />
+        {icon && (
+          <span className="select-leading-icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <span className="select-value">
+          <SelectPrimitive.Value />
+        </span>
         <SelectPrimitive.Icon asChild>
           <ChevronDown size={14} />
         </SelectPrimitive.Icon>

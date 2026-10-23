@@ -138,10 +138,10 @@ export default function FilesPanel({
           <RefreshCw size={15} className={loading ? "spin" : ""} />
         </button>
       </div>
-      <div className="filter-row">
+      <div className="filter-row file-state-filter">
         <span>
-          <ListFilter size={13} />
           <Select
+            icon={<ListFilter size={14} />}
             label="状态筛选"
             value={filter}
             onValueChange={onFilter}
@@ -156,7 +156,6 @@ export default function FilesPanel({
             ]}
           />
         </span>
-        <span>{visible.length.toLocaleString("zh-CN")} 个文件</span>
       </div>
       <div className="file-list-heading">
         <input
@@ -173,7 +172,12 @@ export default function FilesPanel({
             )
           }
         />
-        <span>文件</span>
+        <span>
+          文件{" "}
+          <small className="file-visible-count">
+            {visible.length.toLocaleString("zh-CN")} 个文件
+          </small>
+        </span>
         <span>状态</span>
       </div>
       <div className="file-list" ref={ref}>

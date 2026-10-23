@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import { highlightFixtures } from "./highlight-fixtures.mjs";
 const require = createRequire(import.meta.url);
 const { SvnService } = require("../electron/svn.cjs");
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), "svnx-desktop-"));
@@ -130,6 +131,17 @@ try {
   await expect(page.locator(".file-row").first()).toHaveCSS("height", "44px");
   await fs.mkdir("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/desktop-light.png" });
+  const searchBox = await page.locator(".search-input").first().boundingBox();
+  const stateBox = await page
+    .getByRole("combobox", { name: "状态筛选" })
+    .boundingBox();
+  expect(Math.abs(searchBox.x - stateBox.x)).toBeLessThan(1);
+  expect(Math.abs(searchBox.width - stateBox.width)).toBeLessThan(1);
+  await expect(
+    page
+      .getByRole("combobox", { name: "状态筛选" })
+      .locator(".select-leading-icon"),
+  ).toBeVisible();
   const firstFile = page.locator(".file-row").first();
   const fileBounds = await firstFile.boundingBox();
   await firstFile.click({ button: "right", position: { x: 90, y: 15 } });
@@ -260,7 +272,7 @@ try {
   await page
     .getByRole("checkbox", { name: "选择 路由.ts", exact: true })
     .check();
-  await page.getByRole("button", { name: "提交变更 1", exact: true }).click();
+  await page.getByRole("button", { name: "提交 1", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "提交 1 个路径", exact: true }),
@@ -285,7 +297,7 @@ try {
   await expect(page.getByText("2 个变更文件", { exact: true })).toBeVisible();
   await page
     .locator(".workspace-actions")
-    .getByRole("button", { name: /^更新/ })
+    .getByRole("button", { name: /^拉取/ })
     .click();
   await page
     .getByRole("dialog")
@@ -490,6 +502,44 @@ try {
         ),
     )
     .toBe(true);
+  await fs.mkdir(path.join(root, "highlight-fixtures"));
+  for (const [name, , content] of highlightFixtures)
+    await fs.writeFile(path.join(root, "highlight-fixtures", name), content);
+  await service.execute("add", {
+    workspaceId: "integration",
+    paths: ["highlight-fixtures"],
+  });
+  await page
+    .getByRole("button", { name: "刷新状态 (F5)", exact: true })
+    .click();
+  for (const [name, language] of highlightFixtures) {
+    await page
+      .getByRole("textbox", { name: "搜索文件", exact: true })
+      .fill(`highlight-fixtures/${name}`);
+    await expect(
+      page.locator('[aria-label="文件差异编辑器"]'),
+      name,
+    ).toHaveAttribute("data-language", language);
+    await expect
+      .poll(
+        () =>
+          page
+            .locator(".monaco-diff-editor .modified .view-lines")
+            .evaluate(
+              (root) =>
+                new Set(
+                  [...root.querySelectorAll("span[class]")].flatMap((span) =>
+                    [...span.classList].filter((value) =>
+                      /^mtk\d+$/.test(value),
+                    ),
+                  ),
+                ).size,
+            ),
+        { message: `${name} must render multiple token colors` },
+      )
+      .toBeGreaterThan(1);
+  }
+  await page.getByRole("textbox", { name: "搜索文件", exact: true }).fill("");
   const remoteWriter = path.join(directory, "remote-writer");
   await fs.writeFile(path.join(root, "unknown.svnxunknown"), "unknown type");
   await service.execute("add", {
@@ -502,6 +552,9 @@ try {
   const unknownRow = page
     .locator(".file-row")
     .filter({ hasText: "unknown.svnxunknown" });
+  await page
+    .getByRole("textbox", { name: "搜索文件", exact: true })
+    .fill("unknown.svnxunknown");
   await expect(unknownRow.locator('[data-file-icon="fallback"]')).toBeVisible();
   await unknownRow.click({ button: "right" });
   await page

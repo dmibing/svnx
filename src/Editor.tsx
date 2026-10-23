@@ -1,125 +1,8 @@
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import "monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.css";
-import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
-import "monaco-editor/esm/vs/basic-languages/css/css.contribution";
-import "monaco-editor/esm/vs/basic-languages/html/html.contribution";
-import "monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution";
-import "monaco-editor/esm/vs/basic-languages/scss/scss.contribution";
-import {
-  conf as htmlConfiguration,
-  language as htmlLanguage,
-} from "monaco-editor/esm/vs/basic-languages/html/html";
-import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
-import "monaco-editor/esm/vs/basic-languages/csharp/csharp.contribution";
-import "monaco-editor/esm/vs/basic-languages/xml/xml.contribution";
-import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { useEffect, useRef } from "react";
 import type { Diff } from "./types";
-(self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
-  getWorker: () => new EditorWorker(),
-};
-monaco.editor.defineTheme("svnx-dark", {
-  base: "vs-dark",
-  inherit: true,
-  rules: [],
-  colors: {
-    "editor.background": "#171717",
-    "editor.foreground": "#E8E8E8",
-    "editorGutter.background": "#171717",
-    "editorLineNumber.foreground": "#999999",
-    "editorLineNumber.activeForeground": "#DDDDDD",
-    "editor.selectionBackground": "#30466D",
-    "editor.inactiveSelectionBackground": "#2C3440",
-    "editor.lineHighlightBackground": "#202020",
-    "diffEditor.insertedTextBackground": "#365B3D66",
-    "diffEditor.removedTextBackground": "#713D3D66",
-    "diffEditor.insertedLineBackground": "#203928",
-    "diffEditor.removedLineBackground": "#422A2A",
-    "diffEditorGutter.insertedLineBackground": "#304E37",
-    "diffEditorGutter.removedLineBackground": "#633A3A",
-    "diffEditor.diagonalFill": "#353535",
-    "editorWidget.background": "#202020",
-    "scrollbarSlider.background": "#68686855",
-    "scrollbarSlider.hoverBackground": "#88888888",
-  },
-});
-monaco.languages.register({ id: "vue", extensions: [".vue"] });
-monaco.languages.setLanguageConfiguration("vue", htmlConfiguration);
-monaco.languages.setMonarchTokensProvider("vue", {
-  ...htmlLanguage,
-  tokenizer: {
-    ...htmlLanguage.tokenizer,
-    root: [
-      [
-        /<script\b[^>]*>/,
-        { token: "tag", next: "@vueScript", nextEmbedded: "typescript" },
-      ],
-      [
-        /<style\b[^>]*\blang\s*=\s*["']scss["'][^>]*>/,
-        { token: "tag", next: "@vueStyle", nextEmbedded: "scss" },
-      ],
-      [
-        /<style\b[^>]*>/,
-        { token: "tag", next: "@vueStyle", nextEmbedded: "css" },
-      ],
-      [
-        /\{\{/,
-        {
-          token: "delimiter",
-          next: "@vueExpression",
-          nextEmbedded: "typescript",
-        },
-      ],
-      ...htmlLanguage.tokenizer.root,
-    ],
-    vueScript: [
-      [
-        /<\/script\s*>/,
-        { token: "@rematch", next: "@pop", nextEmbedded: "@pop" },
-      ],
-      [/[^<]+/, ""],
-      [/</, ""],
-    ],
-    vueStyle: [
-      [
-        /<\/style\s*>/,
-        { token: "@rematch", next: "@pop", nextEmbedded: "@pop" },
-      ],
-      [/[^<]+/, ""],
-      [/</, ""],
-    ],
-    vueExpression: [
-      [/\}\}/, { token: "delimiter", next: "@pop", nextEmbedded: "@pop" }],
-      [/[^}]+/, ""],
-      [/}/, ""],
-    ],
-  },
-});
-function language(path: string) {
-  const ext = path.split(".").at(-1)?.toLowerCase();
-  return (
-    (
-      {
-        ts: "typescript",
-        tsx: "typescript",
-        js: "typescript",
-        jsx: "typescript",
-        css: "css",
-        scss: "css",
-        html: "html",
-        vue: "vue",
-        md: "markdown",
-        cs: "csharp",
-        csx: "csharp",
-        xml: "xml",
-        csproj: "xml",
-        resx: "xml",
-        xaml: "xml",
-        config: "xml",
-      } as Record<string, string>
-    )[ext || ""] || "plaintext"
-  );
-}
+import { editorLanguage } from "./editor-language";
+import "./editor-language-support";
 export default function Editor({
   file,
   dark,
@@ -195,8 +78,14 @@ export default function Editor({
     if (!ref.current) return;
     const previous = models.current;
     const next = {
-      original: monaco.editor.createModel(file.before, language(file.path)),
-      modified: monaco.editor.createModel(file.after, language(file.path)),
+      original: monaco.editor.createModel(
+        file.before,
+        editorLanguage(file.path, file.after || file.before),
+      ),
+      modified: monaco.editor.createModel(
+        file.after,
+        editorLanguage(file.path, file.after || file.before),
+      ),
     };
     models.current = next;
     initialRevealPending.current = true;
@@ -232,7 +121,7 @@ export default function Editor({
       ref={container}
       style={{ height: "100%", width: "100%" }}
       aria-label="文件差异编辑器"
-      data-language={language(file.path)}
+      data-language={editorLanguage(file.path, file.after || file.before)}
     />
   );
 }

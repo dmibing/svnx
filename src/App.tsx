@@ -567,7 +567,7 @@ export default function App() {
                     onClick={() => setModal({ kind: "update", paths: [""] })}
                   >
                     <ArrowDownToLine size={15} />
-                    更新
+                    拉取
                     {settings.autoCheckUpdates &&
                       incoming?.count !== undefined && (
                         <span
@@ -589,7 +589,7 @@ export default function App() {
                     onClick={openCommit}
                   >
                     <ArrowUpFromLine size={15} />
-                    提交变更
+                    提交
                     <span className="button-count">{commitFiles.length}</span>
                   </button>
                   <button

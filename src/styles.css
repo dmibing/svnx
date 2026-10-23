@@ -2483,3 +2483,36 @@ kbd {
 :root[data-theme="dark"] .type-file-icon .type-icon-light {
   display: none;
 }
+
+.select-leading-icon {
+  display: inline-flex;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.select-value {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-state-filter {
+  padding: 0 53px 10px 17px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.file-state-filter > span:first-child {
+  width: 100%;
+}
+.file-state-filter .select-trigger {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  gap: 8px;
+  border-radius: 5px;
+}
+.file-visible-count {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
