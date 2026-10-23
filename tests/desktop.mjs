@@ -191,6 +191,42 @@ try {
     )
     .toBe(true);
   await page.screenshot({ path: "artifacts/csharp-first-change.png" });
+  await page.evaluate(() => {
+    const slot = document.querySelector(".monaco-slot");
+    const editor = slot.querySelector(".monaco-diff-editor");
+    const baseline = slot.getBoundingClientRect().height;
+    window.__diffRefreshChecks = [];
+    window.__diffRefreshObserver = new MutationObserver(() => {
+      if (document.querySelector(".loading-strip")) {
+        window.__diffRefreshChecks.push({
+          height: slot.getBoundingClientRect().height,
+          baseline,
+          sameEditor: slot.querySelector(".monaco-diff-editor") === editor,
+        });
+      }
+    });
+    window.__diffRefreshObserver.observe(
+      document.querySelector(".editor-container"),
+      { childList: true, subtree: true },
+    );
+  });
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].emit("focus"),
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__diffRefreshChecks.length))
+    .toBeGreaterThan(0);
+  await expect(page.locator(".loading-strip")).toHaveCount(0);
+  const refreshChecks = await page.evaluate(() => {
+    window.__diffRefreshObserver.disconnect();
+    return window.__diffRefreshChecks;
+  });
+  expect(
+    refreshChecks.every(
+      (check) =>
+        check.sameEditor && Math.abs(check.height - check.baseline) < 1,
+    ),
+  ).toBe(true);
   await page
     .getByRole("checkbox", { name: "选择 路由.ts", exact: true })
     .check();

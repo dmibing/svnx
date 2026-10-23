@@ -1773,6 +1773,11 @@ kbd {
   color: var(--soft);
 }
 .loading-strip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
   font-size: 11px;
   padding: 3px 16px;
   background: var(--blue-bg);

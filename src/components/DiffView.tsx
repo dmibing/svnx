@@ -198,8 +198,12 @@ export default function DiffView({
             <button onClick={onConflict}>解决冲突</button>
           </div>
         )}
-      {loading && <div className="loading-strip">正在读取差异…</div>}
       <div className="editor-container">
+        {loading && (
+          <div className="loading-strip" role="status">
+            正在读取差异…
+          </div>
+        )}
         {!data ? (
           <div className="empty">
             {loading ? "正在加载…" : "未能读取差异，请刷新或重新选择文件。"}
