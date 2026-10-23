@@ -1560,6 +1560,25 @@ select optgroup {
 .commit-files label:last-child {
   border: 0;
 }
+.commit-recovery {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  background: var(--surface);
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.commit-recovery p {
+  color: var(--soft);
+  line-height: 1.65;
+}
+.commit-recovery pre {
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
 .commit-files label > span:not(.badge) {
   flex: 1;
   word-break: break-all;

@@ -57,6 +57,11 @@ const schemas = {
     credentials,
   }),
   commitPlan: z.object(targets),
+  syncCommit: z.object({
+    ...targets,
+    fingerprint: z.string().length(64),
+    credentials,
+  }),
   commit: z.object({
     ...targets,
     fingerprint: z.string().length(64),

@@ -119,7 +119,7 @@ export default function App() {
     : incoming?.error
       ? `自动检测失败：${incoming.error}${incoming.checkedAt ? "；显示上次成功检测的数量" : ""}`
       : incoming?.checkedAt
-        ? `待更新 ${incoming.count || 0} 个路径；上次检测 ${new Date(incoming.checkedAt).toLocaleTimeString("zh-CN")}，每 ${settings.updateCheckMinutes} 分钟检测`
+        ? `待更新 ${incoming.count || 0} 个路径；上次检测 ${new Date(incoming.checkedAt).toLocaleTimeString("zh-CN")}，每 ${settings.updateCheckMinutes} 分钟检测。此数量不代表所有目录基础版本已同步。`
         : "正在检测远端更新";
   const onError = useCallback((e: Error & { code?: string }) => {
     if (e.code === "CANCELLED") return;

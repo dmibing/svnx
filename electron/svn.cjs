@@ -442,8 +442,20 @@ class SvnService {
           output: "已还原。新增文件和未跟踪文件不会被删除。",
         };
       }
+      case "syncCommit":
       case "update": {
-        const list = await targets();
+        let selectedPaths = p.paths;
+        if (method === "syncCommit") {
+          const current = await plan("commit");
+          if (current.fingerprint !== p.fingerprint)
+            throw new SvnError("提交范围已变化，请重新检查后再拉取", "STALE");
+          // A directory target updates only its own base and properties. Added
+          // entries have no repository base and must keep their local schedule.
+          selectedPaths = current.entries
+            .filter((entry) => entry.status !== "added")
+            .map((entry) => entry.path);
+        }
+        const list = await Promise.all(selectedPaths.map(local));
         const output = [];
         let chunk = [],
           length = 0;
@@ -453,10 +465,11 @@ class SvnService {
               decodeOutput(
                 await cli([
                   "update",
+                  ...(method === "syncCommit" ? ["--depth", "empty"] : []),
                   "--accept",
                   "postpone",
                   "-r",
-                  p.revision,
+                  p.revision || "HEAD",
                   "--",
                   ...chunk,
                 ]),
@@ -473,10 +486,11 @@ class SvnService {
             decodeOutput(
               await cli([
                 "update",
+                ...(method === "syncCommit" ? ["--depth", "empty"] : []),
                 "--accept",
                 "postpone",
                 "-r",
-                p.revision,
+                p.revision || "HEAD",
                 "--",
                 ...chunk,
               ]),

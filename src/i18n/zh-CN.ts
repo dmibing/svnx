@@ -34,6 +34,7 @@ export const operationNames: Record<string, string> = {
   diff: "读取差异",
   log: "读取历史",
   commitPlan: "核对提交范围",
+  syncCommit: "拉取提交路径",
   commit: "提交",
   revertPlan: "核对还原范围",
   revert: "还原",
@@ -57,7 +58,7 @@ export const operationNames: Record<string, string> = {
 export const errorHints: Record<string, string> = {
   AUTH: "认证失败，可输入凭据后重试。密码仅在内存中使用。",
   CERTIFICATE: "证书验证失败，请核对证书详情后决定是否仅为此次操作信任。",
-  OUT_OF_DATE: "远端已有新版本，请更新并检查冲突后再提交。",
+  OUT_OF_DATE: "所选路径的基础版本已过期，可能来自此前自己的提交。请拉取相关路径并检查冲突后再提交。",
   WC_LOCKED: "工作副本被锁定，请确认没有其他 SVN 任务，再执行清理。",
   NETWORK: "连接失败。本地状态与 BASE 差异仍可离线使用。",
   STALE: "内容或状态已变化，请重新预览后再操作。",

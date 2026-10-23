@@ -172,12 +172,17 @@ export default function FilesPanel({
       value={filter}
       onValueChange={onFilter}
       options={[
-        { value: "all", label: "全部状态" },
+        { value: "all", label: "全部变更" },
         ...Object.entries(statusNames)
           .filter(([value]) => !["added", "normal"].includes(value))
           .map(([value, label]) => ({
             value,
-            label: value === "modified" ? "修改" : label,
+            label:
+              value === "modified"
+                ? "修改"
+                : value === "unversioned"
+                  ? `未跟踪 · ${files.filter((file) => file.status === "unversioned").length}`
+                  : label,
           })),
       ]}
     />

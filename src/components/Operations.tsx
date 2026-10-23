@@ -85,6 +85,37 @@ export default function Operations({
       files: { path: string; status: string; conflict: boolean }[];
     } | null>(null);
   const first = paths[0] || "";
+  const [commitIssue, setCommitIssue] = useState<{
+    code?: string;
+    message: string;
+  } | null>(null);
+  const [commitNotice, setCommitNotice] = useState("");
+  const recheckCommit = async (sync: boolean) => {
+    if (!plan || busy) return;
+    setBusy(true);
+    setCommitNotice(
+      sync
+        ? "正在拉取所选路径并重新检查，不会自动提交…"
+        : "正在重新核对提交范围…",
+    );
+    try {
+      if (sync)
+        await execute("syncCommit", { paths, fingerprint: plan.fingerprint });
+      const next = (await execute("commitPlan", { paths })) as Plan;
+      setPlan(next);
+      setCommitIssue(null);
+      setCommitNotice(
+        sync
+          ? "所选路径已拉取并重新检查。请核对提交范围后再次确认提交。"
+          : "提交范围已重新检查，提交说明已保留。请核对后再次提交。",
+      );
+    } catch (error) {
+      setCommitNotice("");
+      setCommitIssue(error as Error & { code?: string });
+    } finally {
+      setBusy(false);
+    }
+  };
   const act = async (action: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -97,7 +128,8 @@ export default function Operations({
         onClose();
       }
     } catch (e) {
-      onError(e as Error);
+      if (kind === "commit") setCommitIssue(e as Error & { code?: string });
+      else onError(e as Error);
     } finally {
       setBusy(false);
     }
@@ -275,6 +307,47 @@ export default function Operations({
       {loading && <p className="modal-caption">正在读取最新状态…</p>}
       {kind === "commit" && plan && (
         <>
+          {commitIssue && (
+            <div className="commit-recovery" role="alert">
+              <strong>
+                {commitIssue.code === "OUT_OF_DATE"
+                  ? "所选路径的基础版本已过期"
+                  : "提交未完成"}
+              </strong>
+              <p>
+                {commitIssue.code === "OUT_OF_DATE"
+                  ? "即使没有其他人提交，目录基础版本也可能落后。可以只拉取本次提交涉及的路径：目录不递归，文件仍可能合并远端变更；有冲突时会停止提交。提交说明会保留，不会自动重试提交。"
+                  : "提交说明已保留。请检查错误并重新核对；连接中断时请先确认历史中是否已经提交成功。"}
+              </p>
+              <details>
+                <summary>查看 SVN 详情</summary>
+                <pre>{commitIssue.message}</pre>
+              </details>
+              <div className="empty-actions">
+                {commitIssue.code === "OUT_OF_DATE" && (
+                  <button
+                    className="button"
+                    disabled={busy}
+                    onClick={() => void recheckCommit(true)}
+                  >
+                    拉取所选路径并重新检查
+                  </button>
+                )}
+                <button
+                  className="button"
+                  disabled={busy}
+                  onClick={() => void recheckCommit(false)}
+                >
+                  重新核对提交范围
+                </button>
+              </div>
+            </div>
+          )}
+          {commitNotice && (
+            <p className="modal-note" role="status">
+              {commitNotice}
+            </p>
+          )}
           <p className="modal-caption">
             仅提交以下路径。新增父目录会作为依赖列出；未列出的文件不会自动加入。
           </p>
@@ -321,7 +394,7 @@ export default function Operations({
                 keepLocks,
               }),
             `提交 ${plan.paths.length} 个路径`,
-            !message.trim() || !plan.paths.length,
+            !message.trim() || !plan.paths.length || !!commitIssue,
           )}
         </>
       )}

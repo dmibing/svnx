@@ -117,7 +117,7 @@ try {
     "3",
   );
   await page.getByRole("combobox", { name: "状态筛选" }).click();
-  await page.getByRole("option", { name: "全部状态", exact: true }).click();
+  await page.getByRole("option", { name: "全部变更", exact: true }).click();
   await expect(page.locator(".file-row")).toHaveCount(3);
   await expect(page.locator(".workspace-tabs .tab span")).toHaveText("3");
   await expect(page.locator(".projects .count").first()).toHaveText("3");
@@ -427,7 +427,7 @@ try {
   await expect(page.locator(".historical-sidebar")).toHaveCount(0);
   await page.locator(".workspace-tabs .tab").first().click();
   await page.getByRole("combobox", { name: "状态筛选" }).click();
-  await page.getByRole("option", { name: "未跟踪", exact: true }).click();
+  await page.getByRole("option", { name: /^未跟踪/ }).click();
   await expect(page.locator(".file-visible-count")).toHaveText("1 个文件");
   await expect(page.locator(".workspace-tabs .tab span")).toHaveText("0");
   await expect(
