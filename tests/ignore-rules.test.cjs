@@ -120,6 +120,37 @@ test("ignore editor reads inherited rules, previews without mutation, replaces a
       run("ignorePreview", { property: "svn:ignore", value: "path/*.log" }),
       /按文件名匹配/,
     );
+    await fs.mkdir(path.join(root, "发布文件"));
+    await fs.writeFile(path.join(root, "发布文件", "本地产物.txt"), "keep");
+    await run("ignore", { patterns: ["发布文件"] });
+    assert.equal(
+      (await run("status")).some((entry) => entry.path === "发布文件"),
+      false,
+    );
+    assert.equal(
+      (await run("status", { showIgnored: true })).find(
+        (entry) => entry.path === "发布文件",
+      )?.status,
+      "ignored",
+    );
+    const chineseRules = await run("ignoreRules");
+    assert.match(chineseRules.own["svn:ignore"], /发布文件/);
+    await fs.mkdir(path.join(root, "child", "中文缓存"));
+    await run("saveIgnoreRules", {
+      property: "svn:global-ignores",
+      value: "中文缓存",
+      fingerprint: chineseRules.fingerprint,
+    });
+    assert.equal(
+      (await run("status", { showIgnored: true })).find(
+        (entry) => entry.path === "child/中文缓存",
+      )?.status,
+      "ignored",
+    );
+    assert.equal(
+      await fs.readFile(path.join(root, "发布文件", "本地产物.txt"), "utf8"),
+      "keep",
+    );
   } finally {
     await fs.rm(temp, { recursive: true, force: true });
   }

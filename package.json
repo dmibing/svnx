@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -12,7 +12,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "pack": "npm run build && electron-builder --win --dir",
     "test": "node --test tests/*.test.cjs",
-    "test:desktop": "npm run build && node tests/desktop.mjs && node tests/desktop-tree.mjs",
+    "test:desktop": "npm run build && node tests/desktop.mjs && node tests/desktop-tree.mjs && node tests/desktop-history.mjs",
     "build:icons": "node scripts/icons.mjs",
     "dist": "npm run build && electron-builder --win nsis --x64",
     "format": "prettier --write src electron scripts tests",

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search, ChevronRight, FileCode2, ArrowLeft } from "lucide-react";
 import type { LogEntry, Workspace } from "../types";
-import { run } from "../client";
+import { run, bridge } from "../client";
 import type { Comparison } from "./DiffView";
 import Select from "./Select";
 import Dialog from "./Dialog";
@@ -32,6 +33,11 @@ export default function HistoryView({
     y: number;
   } | null>(null);
   const [compareEntry, setCompareEntry] = useState<LogEntry | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef<string | null>(null);
+  const scopeKey = `${workspace.id}\0${scope}`;
+  const currentScope = useRef(scopeKey);
+  currentScope.current = scopeKey;
   useEffect(() => {
     if (!context) return;
     const close = () => setContext(null);
@@ -59,50 +65,114 @@ export default function HistoryView({
       peg: p.action === "D" ? entry.revision - 1 : entry.revision,
     });
   };
-  const load = async (start?: number) => {
-    setLoading(true);
-    try {
-      const next = await run<LogEntry[]>("log", {
-        workspaceId: workspace.id,
-        path: scope,
-        start,
-        limit: 100,
-      });
-      setEntries((previous) =>
-        start === undefined ? next : [...previous, ...next],
-      );
-      if (start === undefined) {
-        setSelected(next[0] || null);
-        setOldRev(next[0] ? String(Math.max(0, next[0].revision - 1)) : "");
-        setNewRev(next[0] ? String(next[0].revision) : "");
+  const load = useCallback(
+    async (start?: number) => {
+      if (requestRef.current) return;
+      const requestId = crypto.randomUUID();
+      requestRef.current = requestId;
+      setLoading(true);
+      try {
+        const next = await run<LogEntry[]>(
+          "log",
+          {
+            workspaceId: workspace.id,
+            path: scope,
+            start,
+            limit: 50,
+          },
+          { id: requestId },
+        );
+        if (
+          currentScope.current !== scopeKey ||
+          requestRef.current !== requestId
+        )
+          return;
+        setEntries((previous) =>
+          start === undefined
+            ? next
+            : [
+                ...previous,
+                ...next.filter(
+                  (entry) =>
+                    !previous.some((old) => old.revision === entry.revision),
+                ),
+              ],
+        );
+        if (start === undefined) {
+          setSelected(next[0] || null);
+          setOldRev(next[0] ? String(Math.max(0, next[0].revision - 1)) : "");
+          setNewRev(next[0] ? String(next[0].revision) : "");
+        }
+        setHasMore(next.length === 50 && (next.at(-1)?.revision || 0) > 0);
+      } catch (e) {
+        if (
+          requestRef.current === requestId &&
+          (e as { code?: string }).code !== "CANCELLED"
+        )
+          onError(e as Error);
+      } finally {
+        if (requestRef.current === requestId) {
+          requestRef.current = null;
+          setLoading(false);
+        }
       }
-      setHasMore(next.length === 100);
-    } catch (e) {
-      onError(e as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [workspace.id, scope, scopeKey, onError],
+  );
   useEffect(() => {
     setEntries([]);
     setSelected(null);
+    setQuery("");
+    setHasMore(true);
+    if (listRef.current) listRef.current.scrollTop = 0;
     void load();
-  }, [workspace.id, scope]);
-  const revisionOptions = [
-    ...new Set([
-      0,
-      workspace.revision,
-      ...entries.map((entry) => entry.revision),
-      ...(selected
-        ? [Math.max(0, selected.revision - 1), selected.revision]
-        : []),
-    ]),
-  ]
-    .sort((a, b) => b - a)
-    .map((revision) => ({
-      value: String(revision),
-      label: `r${revision}`,
-    }));
+    return () => {
+      const id = requestRef.current;
+      requestRef.current = null;
+      if (id)
+        void bridge()
+          .cancel(id)
+          .catch(() => {});
+    };
+  }, [load]);
+  const filtered = useMemo(
+    () =>
+      entries.filter((entry) =>
+        `${entry.revision}${entry.author}${entry.message}${entry.date}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+      ),
+    [entries, query],
+  );
+  const virtual = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 58,
+    overscan: 6,
+    getItemKey: (index) => filtered[index].revision,
+  });
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [query]);
+  const revisionOptions = useMemo(
+    () =>
+      [
+        ...new Set([
+          0,
+          workspace.revision,
+          ...entries.map((entry) => entry.revision),
+          ...(selected
+            ? [Math.max(0, selected.revision - 1), selected.revision]
+            : []),
+        ]),
+      ]
+        .sort((a, b) => b - a)
+        .map((revision) => ({
+          value: String(revision),
+          label: `r${revision}`,
+        })),
+    [entries, selected, workspace.revision],
+  );
   return (
     <>
       {context && (
@@ -173,65 +243,87 @@ export default function HistoryView({
           <span title={scope}>{scope || "整个工作副本"}</span>
           <span>{entries.length} 条记录</span>
         </div>
-        <div className="history-list">
-          {entries
-            .filter((r) =>
-              `${r.revision}${r.author}${r.message}${r.date}`
-                .toLowerCase()
-                .includes(query.toLowerCase()),
+        <div
+          className="history-list"
+          ref={listRef}
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            if (
+              !query &&
+              hasMore &&
+              !loading &&
+              entries.length &&
+              element.scrollTop > 0 &&
+              element.scrollHeight - element.scrollTop - element.clientHeight <
+                174
             )
-            .map((r) => (
-              <button
-                key={r.revision}
-                className={`history-row ${selected?.revision === r.revision ? "selected" : ""}`}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  setSelected(r);
-                  setOldRev(String(Math.max(0, r.revision - 1)));
-                  setNewRev(String(r.revision));
-                  setContext({
-                    entry: r,
-                    x: Math.max(
-                      8,
-                      Math.min(event.clientX, window.innerWidth - 240),
-                    ),
-                    y: Math.max(
-                      8,
-                      Math.min(event.clientY, window.innerHeight - 100),
-                    ),
-                  });
-                }}
-                onClick={() => {
-                  setSelected(r);
-                  setOldRev(String(Math.max(0, r.revision - 1)));
-                  setNewRev(String(r.revision));
-                }}
-              >
-                <div className="history-primary">
-                  <span className="history-revision">r{r.revision}</span>
-                  <strong title={r.message || "（无提交说明）"}>
-                    {r.message || "（无提交说明）"}
-                  </strong>
-                </div>
-                <div className="history-secondary">
-                  <span className="history-author">
-                    <span className="avatar">{r.author[0]}</span>
-                    {r.author}
-                  </span>
-                  <small>
-                    {new Date(r.date).toLocaleString("zh-CN", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </small>
-                  <span className="history-path-count">
-                    {r.paths.length} 个路径
-                  </span>
-                </div>
-              </button>
-            ))}
+              void load(entries.at(-1)!.revision - 1);
+          }}
+        >
+          <div style={{ height: virtual.getTotalSize(), position: "relative" }}>
+            {virtual.getVirtualItems().map((row) => {
+              const r = filtered[row.index];
+              return (
+                <button
+                  key={r.revision}
+                  style={{
+                    position: "absolute",
+                    top: row.start,
+                    left: 0,
+                    width: "100%",
+                  }}
+                  className={`history-row ${selected?.revision === r.revision ? "selected" : ""}`}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setSelected(r);
+                    setOldRev(String(Math.max(0, r.revision - 1)));
+                    setNewRev(String(r.revision));
+                    setContext({
+                      entry: r,
+                      x: Math.max(
+                        8,
+                        Math.min(event.clientX, window.innerWidth - 240),
+                      ),
+                      y: Math.max(
+                        8,
+                        Math.min(event.clientY, window.innerHeight - 100),
+                      ),
+                    });
+                  }}
+                  onClick={() => {
+                    setSelected(r);
+                    setOldRev(String(Math.max(0, r.revision - 1)));
+                    setNewRev(String(r.revision));
+                  }}
+                >
+                  <div className="history-primary">
+                    <span className="history-revision">r{r.revision}</span>
+                    <strong title={r.message || "（无提交说明）"}>
+                      {r.message || "（无提交说明）"}
+                    </strong>
+                  </div>
+                  <div className="history-secondary">
+                    <span className="history-author">
+                      <span className="avatar">{r.author[0]}</span>
+                      {r.author}
+                    </span>
+                    <small>
+                      {new Date(r.date).toLocaleString("zh-CN", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </small>
+                    <span className="history-path-count">
+                      {r.paths.length} 个路径
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
           {!entries.length && !loading && (
             <div className="empty">没有历史记录</div>
           )}
@@ -239,13 +331,13 @@ export default function HistoryView({
         <div className="history-pagination">
           <button
             className="button"
-            disabled={loading || !hasMore}
+            disabled={loading || !hasMore || !entries.length}
             onClick={() => void load(entries.at(-1)!.revision - 1)}
           >
             {loading
               ? "正在读取…"
               : hasMore
-                ? "加载更多（100 条）"
+                ? "加载更多（50 条）"
                 : "已显示全部历史"}
           </button>
         </div>

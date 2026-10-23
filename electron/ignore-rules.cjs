@@ -13,19 +13,37 @@ async function readRules(xml, target, hash) {
   const data = await xml([
     "proplist",
     "--xml",
-    "--verbose",
     "--show-inherited-props",
     `${target}@`,
   ]);
   const own = { "svn:ignore": "", "svn:global-ignores": "" },
     inherited = [];
-  for (const entry of array(data.properties?.target)) {
-    if (path.resolve(entry.path) === target)
-      for (const p of array(entry.property))
-        if (names.includes(p.name)) own[p.name] = text(p);
-    for (const p of array(entry.inherited_property))
-      if (p.name === "svn:global-ignores")
-        inherited.push({ source: entry.path, value: text(p) });
+  // Windows SVN proplist --verbose translates property text to the local code
+  // page even inside XML. propget --xml returns canonical UTF-8 values.
+  for (const name of names) {
+    const present = array(data.properties?.target).some((entry) =>
+      [...array(entry.property), ...array(entry.inherited_property)].some(
+        (p) => p.name === name,
+      ),
+    );
+    if (!present) continue;
+    const values = await xml([
+      "propget",
+      "--xml",
+      "--show-inherited-props",
+      name,
+      `${target}@`,
+    ]);
+    for (const entry of array(values.properties?.target)) {
+      for (const p of array(entry.property)) {
+        if (path.resolve(entry.path) === target) own[name] = text(p);
+        else if (name === "svn:global-ignores")
+          inherited.push({ source: entry.path, value: text(p) });
+      }
+      for (const p of array(entry.inherited_property))
+        if (name === "svn:global-ignores")
+          inherited.push({ source: entry.path, value: text(p) });
+    }
   }
   return { own, inherited, fingerprint: hash({ own, inherited }) };
 }

@@ -564,12 +564,12 @@ class SvnService {
         };
       case "ignore": {
         const target = await local(p.directory);
-        const props = (await xml(["proplist", "--xml", "--verbose", target]))
-          .properties;
-        const existing = array(props?.target?.property).find(
-          (e) => e.name === "svn:ignore",
+        const rules = await readRules(
+          xml,
+          await this.guard(root, p.directory),
+          hash,
         );
-        const text = existing?.["#text"] || "";
+        const text = rules.own["svn:ignore"];
         const next = [
           ...new Set([...text.split(/\r?\n/).filter(Boolean), ...p.patterns]),
         ].join("\n");
@@ -761,7 +761,15 @@ class SvnService {
       await fs.writeFile(file, value, { mode: 0o600 });
       return {
         output: decodeOutput(
-          await cli(["propset", name, "--file", file, "--", target]),
+          await cli([
+            "propset",
+            name,
+            "--file",
+            file,
+            ...(name.startsWith("svn:") ? ["--encoding", "UTF-8"] : []),
+            "--",
+            target,
+          ]),
         ),
       };
     } finally {

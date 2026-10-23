@@ -104,7 +104,7 @@ interface State {
   engineError: string;
   booted: boolean;
   set: (patch: Partial<State>) => void;
-  refresh: (id: string) => Promise<void>;
+  refresh: (id: string, fresh?: boolean) => Promise<void>;
   initialize: () => Promise<void>;
 }
 export const useClient = create<State>((set, get) => ({
@@ -127,11 +127,11 @@ export const useClient = create<State>((set, get) => ({
   engineError: "",
   booted: false,
   set: (patch) => set(patch),
-  refresh: async (id) => {
+  refresh: async (id, fresh = false) => {
     const entries = await run<FileEntry[]>(
       "status",
       { workspaceId: id },
-      { dedupe: true },
+      { dedupe: !fresh },
     );
     set((s) => ({ files: { ...s.files, [id]: entries } }));
     const info = await run<Partial<Workspace>>(

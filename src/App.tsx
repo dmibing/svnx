@@ -139,6 +139,11 @@ export default function App() {
     const payload = { workspaceId: selectedId, ...params };
     try {
       const result = await run(method, payload);
+      if (["ignore", "saveIgnoreRules"].includes(method) && selectedId) {
+        await useClient.getState().refresh(selectedId, true);
+        setChecked([]);
+        setSelected(null);
+      }
       if (method === "add" && selectedId) {
         await useClient.getState().refresh(selectedId);
         setFilter("modified");
@@ -168,7 +173,11 @@ export default function App() {
           setChecked([]);
           setSelected(null);
         }
-        if (selectedId && method !== "add") void refresh();
+        if (
+          selectedId &&
+          !["add", "ignore", "saveIgnoreRules"].includes(method)
+        )
+          void refresh();
       }
       return result;
     } catch (e) {
