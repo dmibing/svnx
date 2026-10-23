@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { FileEntry } from "../types";
 import { statusNames, letters } from "../i18n/zh-CN";
-import { filterFiles } from "../file-filter";
+import { filterFiles, isVersionedChange } from "../file-filter";
 import Select from "./Select";
 import { buildFileTree, flattenFileTree } from "../file-tree";
 export function Badge({ file }: { file: FileEntry }) {
@@ -139,6 +139,10 @@ export default function FilesPanel({
     [visible, tree, layout, collapsed, query],
   );
   const checkedSet = useMemo(() => new Set(checked), [checked]);
+  const clean =
+    !files.some(isVersionedChange) &&
+    !query &&
+    ["all", "modified"].includes(filter);
   const toggleGroup = (entries: FileEntry[]) => {
     const paths = new Set(entries.map((file) => file.path));
     onCheck(
@@ -161,45 +165,48 @@ export default function FilesPanel({
     estimateSize: () => (layout === "tree" ? 32 : 44),
     overscan: 8,
   });
+  const stateControl = (
+    <Select
+      icon={<ListFilter size={14} />}
+      label="状态筛选"
+      value={filter}
+      onValueChange={onFilter}
+      options={[
+        { value: "all", label: "全部状态" },
+        ...Object.entries(statusNames)
+          .filter(([value]) => !["added", "normal"].includes(value))
+          .map(([value, label]) => ({
+            value,
+            label: value === "modified" ? "修改" : label,
+          })),
+      ]}
+    />
+  );
   return (
     <>
-      <div className="search-row">
-        <div className="search-input">
-          <Search size={14} />
-          <input
-            placeholder="搜索文件…"
-            aria-label="搜索文件"
-            value={query}
-            onChange={(e) => onQuery(e.target.value)}
-          />
+      <div className="file-toolbar">
+        <div className="search-row">
+          <div className="search-input">
+            <Search size={14} />
+            <input
+              placeholder="搜索文件…"
+              aria-label="搜索文件"
+              value={query}
+              onChange={(e) => onQuery(e.target.value)}
+            />
+          </div>
+          <button
+            title="刷新状态 (F5)"
+            className="icon-button"
+            onClick={refresh}
+            disabled={loading}
+          >
+            <RefreshCw size={15} className={loading ? "spin" : ""} />
+          </button>
         </div>
-        <button
-          title="刷新状态 (F5)"
-          className="icon-button"
-          onClick={refresh}
-          disabled={loading}
-        >
-          <RefreshCw size={15} className={loading ? "spin" : ""} />
-        </button>
-      </div>
-      <div className="filter-row file-state-filter">
-        <span>
-          <Select
-            icon={<ListFilter size={14} />}
-            label="状态筛选"
-            value={filter}
-            onValueChange={onFilter}
-            options={[
-              { value: "all", label: "全部状态" },
-              ...Object.entries(statusNames)
-                .filter(([value]) => !["added", "normal"].includes(value))
-                .map(([value, label]) => ({
-                  value,
-                  label: value === "modified" ? "修改" : label,
-                })),
-            ]}
-          />
-        </span>
+        <div className="filter-row file-state-filter">
+          <span>{stateControl}</span>
+        </div>
       </div>
       <div className="file-list-heading">
         <input
@@ -216,13 +223,14 @@ export default function FilesPanel({
             )
           }
         />
-        <span>
-          文件{" "}
+        <span className="compact-state-filter">{stateControl}</span>
+        <span className="file-heading-name">
+          <span className="file-heading-caption">文件 </span>
           <small className="file-visible-count">
             {visible.length.toLocaleString("zh-CN")} 个文件
           </small>
         </span>
-        <span>状态</span>
+        <span className="file-state-heading">状态</span>
         <div
           className="file-layout-actions"
           role="group"
@@ -410,25 +418,28 @@ export default function FilesPanel({
         {!visible.length && (
           <div className="empty">
             <CheckCheck size={28} />
-            <strong>
-              {query || filter !== "all" ? "没有匹配的文件" : "工作副本干净"}
-            </strong>
-            <span>
-              {query || filter !== "all"
-                ? "试试其他关键词或状态"
-                : "没有待提交的变更，可使用“浏览文件”查看项目。"}
-            </span>
+            <strong>{clean ? "工作副本干净" : "当前筛选无结果"}</strong>
+            <span>{clean ? "没有待提交的变更" : "试试其他关键词或状态"}</span>
+            {!clean && (
+              <button
+                className="button subtle"
+                onClick={() => {
+                  onQuery("");
+                  onFilter("all");
+                }}
+              >
+                查看全部状态
+              </button>
+            )}
           </div>
         )}
       </div>
-      <div className="list-summary">
-        <span>
-          {checked.length
-            ? `已选择 ${checked.length} 个文件`
-            : `${visible.length.toLocaleString("zh-CN")} 个${filter === "unversioned" ? "未跟踪" : "变更"}文件`}
-        </span>
-        {loading && <span>正在刷新…</span>}
-      </div>
+      {(checked.length > 0 || loading) && (
+        <div className="list-summary">
+          {checked.length > 0 && <span>已选择 {checked.length} 个文件</span>}
+          {loading && <span>正在刷新…</span>}
+        </div>
+      )}
       <div className="file-actions">
         <button
           className="button subtle"

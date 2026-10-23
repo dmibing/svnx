@@ -128,6 +128,7 @@ export interface SvnxBridge {
     params: Record<string, unknown>;
   }): Promise<Envelope<unknown>>;
   cancel(id: string): Promise<Envelope<boolean>>;
+  copyText(text: string): Promise<Envelope<boolean>>;
   openWorkspace(): Promise<Envelope<Workspace | null>>;
   chooseCheckout(): Promise<Envelope<string | null>>;
   removeWorkspace(id: string): Promise<Envelope<boolean>>;

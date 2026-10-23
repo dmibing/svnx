@@ -26,16 +26,16 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #171717;
-  --sidebar: #141414;
-  --surface: #202020;
-  --hover: #292929;
-  --line: #353535;
-  --muted: #a0a0a0;
+  --bg: #242424;
+  --sidebar: #202020;
+  --surface: #2b2b2b;
+  --hover: #343434;
+  --line: #414141;
+  --muted: #b0b0b0;
   --text: #e8e8e8;
   --soft: #c0c0c0;
   --blue: #a1baff;
-  --blue-bg: #25344d;
+  --blue-bg: #30415c;
   --green: #8ccfa5;
   --green-bg: #1e3328;
   --red: #eda8a8;
@@ -408,6 +408,46 @@ h1 {
   margin-top: 0;
   font-family: Consolas, "Microsoft YaHei UI", monospace;
 }
+.workspace-path {
+  gap: 5px;
+}
+.workspace-path-start {
+  margin-right: -5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-path-end {
+  flex-shrink: 0;
+  white-space: nowrap;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-path .icon-button {
+  flex-shrink: 0;
+  opacity: 1;
+  width: 28px;
+  height: 28px;
+}
+.workspace-path .icon-button:focus-visible {
+  opacity: 1;
+}
+.workspace-tabs [data-empty="true"],
+.button-count[data-empty="true"] {
+  display: none;
+}
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.empty-actions .button {
+  font-size: 13px;
+}
 .workspace-path .icon-button {
   width: 20px;
   height: 20px;
@@ -524,6 +564,8 @@ h1 {
   flex: 1;
 }
 .change-panel {
+  container-type: inline-size;
+  container-name: files;
   width: var(--list-width);
   flex-shrink: 0;
   display: flex;
@@ -753,6 +795,94 @@ select optgroup {
 .file-row.tree-folder,
 .file-row.tree-file {
   height: 32px;
+}
+.file-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  min-width: 0;
+}
+.file-toolbar .search-row {
+  display: contents;
+}
+.file-toolbar .search-input {
+  flex: 1;
+  min-width: 70px;
+}
+.file-toolbar .search-row > .icon-button {
+  order: 2;
+  flex-shrink: 0;
+}
+.file-toolbar .file-state-filter {
+  order: 1;
+  flex: 0 0 116px;
+  padding: 0;
+  min-width: 0;
+}
+.file-toolbar .file-state-filter > span {
+  width: 100%;
+}
+.file-toolbar .select-trigger {
+  width: 100%;
+  padding-left: 8px;
+  padding-right: 8px;
+  gap: 5px;
+}
+.compact-state-filter {
+  display: none;
+}
+.file-heading-name {
+  min-width: 0;
+}
+.file-state-heading {
+  margin-left: auto;
+}
+@container files (max-width: 399px) {
+  .file-toolbar {
+    padding: 10px 12px;
+  }
+  .file-toolbar .file-state-filter {
+    display: none;
+  }
+  .file-list-heading {
+    min-height: 40px;
+    height: 40px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .compact-state-filter {
+    display: block;
+    flex: 0 0 88px;
+  }
+  .compact-state-filter .select-trigger {
+    width: 100%;
+    padding: 0 6px;
+    gap: 4px;
+    min-height: 28px;
+    height: 28px;
+  }
+  .compact-state-filter .select-leading-icon {
+    display: none;
+  }
+  .file-heading-name {
+    flex: 1;
+    margin-left: 0 !important;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .file-heading-caption,
+  .file-state-heading {
+    display: none;
+  }
+  .file-visible-count {
+    margin-left: 0;
+  }
+  .file-layout-actions {
+    margin-left: 0;
+    gap: 0;
+  }
 }
 .file-row.selected {
   background: var(--blue-bg);
@@ -2575,6 +2705,7 @@ kbd {
 }
 
 .statusbar-right {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 14px;

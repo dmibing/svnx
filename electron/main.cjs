@@ -6,6 +6,7 @@ const {
   utilityProcess,
   nativeTheme,
   shell,
+  clipboard,
 } = require("electron");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
@@ -383,6 +384,12 @@ async function setup() {
     worker?.postMessage({ method: "$cancel", params: { id } });
     return true;
   });
+  handle("svnx:copy-text", (text) => {
+    if (typeof text !== "string" || text.length > 32768 || text.includes("\0"))
+      throw new Error("复制内容无效");
+    clipboard.writeText(text);
+    return true;
+  });
   handle("svnx:run", async (request) => {
     if (
       !request ||
@@ -458,7 +465,7 @@ function createWindow() {
     minHeight: 680,
     title: "SVNX",
     icon: path.join(__dirname, "../build/icon.ico"),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? "#171717" : "#ffffff",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#242424" : "#ffffff",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

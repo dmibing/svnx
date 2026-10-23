@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld("svnx", {
   bootstrap: () => ipcRenderer.invoke("svnx:bootstrap"),
   run: (request) => ipcRenderer.invoke("svnx:run", request),
   cancel: (id) => ipcRenderer.invoke("svnx:cancel", id),
+  copyText: (text) => ipcRenderer.invoke("svnx:copy-text", text),
   openWorkspace: () => ipcRenderer.invoke("svnx:open"),
   chooseCheckout: () => ipcRenderer.invoke("svnx:checkout-directory"),
   removeWorkspace: (id) => ipcRenderer.invoke("svnx:remove", id),

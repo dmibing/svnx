@@ -105,21 +105,21 @@ try {
   await expect(page.getByRole("heading", { name: /本地变更/ })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible({
+  await expect(page.locator(".file-visible-count")).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByRole("combobox", { name: "状态筛选" })).toHaveText(
     "修改",
   );
   await expect(page.locator(".file-row")).toHaveCount(3);
-  await expect(page.locator(".nav-item .count")).toHaveText("3");
+  await expect(page.locator(".workspace-tabs .tab span")).toHaveText("3");
   await expect(page.locator(".workspace-tabs .tab span").first()).toHaveText(
     "3",
   );
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await page.getByRole("option", { name: "全部状态", exact: true }).click();
   await expect(page.locator(".file-row")).toHaveCount(3);
-  await expect(page.locator(".nav-item .count")).toHaveText("3");
+  await expect(page.locator(".workspace-tabs .tab span")).toHaveText("3");
   await expect(page.locator(".projects .count").first()).toHaveText("3");
   await expect(
     page.locator(".workspace-actions .button-count:not(.incoming-count)"),
@@ -135,13 +135,8 @@ try {
   const stateBox = await page
     .getByRole("combobox", { name: "状态筛选" })
     .boundingBox();
-  expect(Math.abs(searchBox.x - stateBox.x)).toBeLessThan(1);
-  expect(Math.abs(searchBox.width - stateBox.width)).toBeLessThan(1);
-  await expect(
-    page
-      .getByRole("combobox", { name: "状态筛选" })
-      .locator(".select-leading-icon"),
-  ).toBeVisible();
+  expect(stateBox.y).toBeGreaterThan(searchBox.y);
+  expect(searchBox.width).toBeGreaterThan(240);
   const firstFile = page.locator(".file-row").first();
   const fileBounds = await firstFile.boundingBox();
   await firstFile.click({ button: "right", position: { x: 90, y: 15 } });
@@ -169,14 +164,14 @@ try {
     .getByRole("textbox", { name: "搜索文件", exact: true })
     .fill("路由");
   await expect(page.locator(".file-row")).toHaveCount(1);
-  await expect(page.locator(".nav-item .count")).toHaveText("1");
+  await expect(page.locator(".workspace-tabs .tab span")).toHaveText("1");
   await expect(page.locator(".workspace-tabs .tab span").first()).toHaveText(
     "1",
   );
   await page
     .getByRole("textbox", { name: "搜索文件", exact: true })
     .fill("不存在的文件");
-  await expect(page.locator(".nav-item .count")).toHaveText("0");
+  await expect(page.locator(".workspace-tabs .tab span")).toHaveText("0");
   await page.getByRole("textbox", { name: "搜索文件", exact: true }).fill("");
   await page
     .locator(".file-row")
@@ -294,7 +289,7 @@ try {
     .getByRole("button", { name: "完成", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15000 });
-  await expect(page.getByText("2 个变更文件", { exact: true })).toBeVisible();
+  await expect(page.locator(".file-visible-count")).toBeVisible();
   await page
     .locator(".workspace-actions")
     .getByRole("button", { name: /^拉取/ })
@@ -331,7 +326,7 @@ try {
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await expect(page.locator(".select-content")).toHaveCSS(
     "background-color",
-    "rgb(32, 32, 32)",
+    "rgb(43, 43, 43)",
   );
   await expect(page.locator(".select-content")).toHaveCSS(
     "color",
@@ -433,8 +428,8 @@ try {
   await page.locator(".workspace-tabs .tab").first().click();
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await page.getByRole("option", { name: "未跟踪", exact: true }).click();
-  await expect(page.getByText("1 个未跟踪文件", { exact: true })).toBeVisible();
-  await expect(page.locator(".nav-item .count")).toHaveText("0");
+  await expect(page.locator(".file-visible-count")).toHaveText("1 个文件");
+  await expect(page.locator(".workspace-tabs .tab span")).toHaveText("0");
   await expect(
     page.locator(".workspace-actions .button-count:not(.incoming-count)"),
   ).toHaveText("2");

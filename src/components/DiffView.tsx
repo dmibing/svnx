@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useState, useRef } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  useRef,
+  type ReactNode,
+} from "react";
 import {
   ArrowUp,
   ArrowDown,
@@ -30,6 +37,7 @@ export default function DiffView({
   comparison,
   onError,
   onConflict,
+  emptyState,
 }: {
   workspace: Workspace;
   file: FileEntry | null;
@@ -37,6 +45,7 @@ export default function DiffView({
   comparison: Comparison | null;
   onError: (e: Error) => void;
   onConflict: () => void;
+  emptyState?: { title: string; description: string; actions: ReactNode };
 }) {
   const [data, setData] = useState<Diff | null>(null),
     [loading, setLoading] = useState(false),
@@ -96,8 +105,11 @@ export default function DiffView({
         <div className="empty-icon">
           <Columns2 size={28} />
         </div>
-        <strong>每一处变更，一目了然</strong>
-        <span>从左侧选择文件，查看修改前后的差异。</span>
+        <strong>{emptyState?.title || "选择文件查看差异"}</strong>
+        <span>
+          {emptyState?.description || "从左侧选择文件，查看修改前后的差异。"}
+        </span>
+        {emptyState?.actions}
       </div>
     );
   const external = () => {
@@ -115,7 +127,10 @@ export default function DiffView({
           className="icon-button push-right"
           title="复制相对路径"
           onClick={() =>
-            navigator.clipboard.writeText(target || "").catch(onError)
+            bridge()
+              .copyText(target || "")
+              .then(unwrap)
+              .catch(onError)
           }
         >
           <Copy size={13} />

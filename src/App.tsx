@@ -11,6 +11,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Check,
+  Copy,
   ChevronRight,
   CircleHelp,
   Clock3,
@@ -93,6 +94,13 @@ export default function App() {
   const dark =
     settings.theme === "dark" || (settings.theme === "system" && systemDark);
   const visibleChanges = filterFiles(changes, query, filter);
+  const clean =
+    !changes.some(isVersionedChange) &&
+    !query &&
+    ["all", "modified"].includes(filter);
+  const untrackedCount = changes.filter(
+    (file) => file.status === "unversioned",
+  ).length;
   const visibleCount = visibleChanges.filter(isVersionedChange).length;
   const commitFiles = (
     checked.length ? changes.filter((f) => checked.includes(f.path)) : changes
@@ -464,33 +472,6 @@ export default function App() {
             <Plus size={14} />
             检出工作副本
           </button>
-          <div className="sidebar-divider" />
-          <div className="sidebar-label">当前项目</div>
-          <nav>
-            <button
-              className={`nav-item ${view === "changes" ? "active" : ""}`}
-              disabled={!current}
-              onClick={() => {
-                setView("changes");
-                setComparison(null);
-              }}
-            >
-              <GitBranch size={16} />
-              本地变更<span className="count">{visibleCount}</span>
-            </button>
-            <button
-              className={`nav-item ${view === "history" ? "active" : ""}`}
-              disabled={!current}
-              onClick={() => {
-                setView("history");
-                setHistoryScope("");
-                setComparison(null);
-              }}
-            >
-              <History size={16} />
-              版本历史
-            </button>
-          </nav>
           <div className="sidebar-bottom">
             <button
               className="nav-item"
@@ -565,9 +546,7 @@ export default function App() {
             <>
               <div className="workspace-heading">
                 <div>
-                  <div className="breadcrumb">
-                    工作副本
-                    <ChevronRight size={12} />
+                  <div className="breadcrumb" title={current.name}>
                     <span>{current.name}</span>
                   </div>
                   <h1>
@@ -579,9 +558,31 @@ export default function App() {
                       根目录 r{current.revision}
                     </span>
                   </h1>
-                  <div className="workspace-path" title={current.url}>
+                  <div className="workspace-path" title={current.path}>
                     <Folder size={12} />
-                    <span>{current.path}</span>
+                    <span className="workspace-path-start">
+                      {current.path.slice(
+                        0,
+                        Math.max(0, current.path.lastIndexOf("\\") + 1),
+                      )}
+                    </span>
+                    <span className="workspace-path-end">
+                      {current.path.split(/[\\/]/).at(-1)}
+                    </span>
+                    <button
+                      className="icon-button"
+                      title="复制工作副本路径"
+                      aria-label="复制工作副本路径"
+                      onClick={() =>
+                        void bridge()
+                          .copyText(current.path)
+                          .then(unwrap)
+                          .then(() => notify("路径已复制"))
+                          .catch(onError)
+                      }
+                    >
+                      <Copy size={14} />
+                    </button>
                   </div>
                 </div>
                 <div className="workspace-actions">
@@ -594,6 +595,7 @@ export default function App() {
                     <ArrowDownToLine size={15} />
                     拉取
                     {settings.autoCheckUpdates &&
+                      !!incoming?.count &&
                       incoming?.count !== undefined && (
                         <span
                           className="button-count incoming-count"
@@ -615,7 +617,12 @@ export default function App() {
                   >
                     <ArrowUpFromLine size={15} />
                     提交
-                    <span className="button-count">{commitFiles.length}</span>
+                    <span
+                      className="button-count"
+                      data-empty={commitFiles.length === 0}
+                    >
+                      {commitFiles.length}
+                    </span>
                   </button>
                   <details className="workspace-menu">
                     <summary
@@ -658,6 +665,7 @@ export default function App() {
               </div>
               <div className="workspace-tabs">
                 <button
+                  aria-label="本地变更"
                   className={`tab ${view === "changes" ? "active" : ""}`}
                   onClick={() => {
                     setView("changes");
@@ -665,9 +673,11 @@ export default function App() {
                   }}
                 >
                   <GitBranch size={14} />
-                  变更<span>{visibleCount}</span>
+                  变更
+                  <span data-empty={visibleCount === 0}>{visibleCount}</span>
                 </button>
                 <button
+                  aria-label="版本历史"
                   className={`tab ${view === "history" ? "active" : ""}`}
                   onClick={() => {
                     setView("history");
@@ -778,12 +788,18 @@ export default function App() {
                       role="separator"
                       aria-label="调整文件面板宽度"
                       aria-orientation="vertical"
+                      title="拖动调整宽度，双击恢复推荐宽度（330px）"
+                      onDoubleClick={() => setListWidth(330)}
                       tabIndex={0}
                       onPointerDown={() => {
                         dragging.current = true;
                         document.body.classList.add("resizing");
                       }}
                       onKeyDown={(e) => {
+                        if (e.key === "Home") {
+                          e.preventDefault();
+                          setListWidth(330);
+                        }
                         if (e.key === "ArrowLeft")
                           setListWidth((w) => Math.max(280, w - 20));
                         if (e.key === "ArrowRight")
@@ -799,6 +815,55 @@ export default function App() {
                         comparison={comparison}
                         onError={onError}
                         onConflict={() => action("conflict")}
+                        emptyState={{
+                          title: clean ? "暂无待提交的变更" : "当前筛选无结果",
+                          description: clean
+                            ? untrackedCount
+                              ? `另有 ${untrackedCount} 个未跟踪项，可切换筛选查看。`
+                              : "工作副本已就绪，可以查看历史或浏览项目文件。"
+                            : "调整搜索关键词或状态筛选后重试。",
+                          actions: (
+                            <div className="empty-actions">
+                              {!clean && (
+                                <button
+                                  className="button"
+                                  onClick={() => {
+                                    setQuery("");
+                                    setFilter("all");
+                                  }}
+                                >
+                                  查看全部状态
+                                </button>
+                              )}
+                              {untrackedCount > 0 && (
+                                <button
+                                  className="button"
+                                  onClick={() => {
+                                    setQuery("");
+                                    setFilter("unversioned");
+                                  }}
+                                >
+                                  查看未跟踪（{untrackedCount}）
+                                </button>
+                              )}
+                              <button
+                                className="button"
+                                onClick={() => {
+                                  setView("history");
+                                  setHistoryScope("");
+                                }}
+                              >
+                                查看历史
+                              </button>
+                              <button
+                                className="button"
+                                onClick={() => action("browse")}
+                              >
+                                浏览文件
+                              </button>
+                            </div>
+                          ),
+                        }}
                       />
                     </section>
                   </>
@@ -872,11 +937,7 @@ export default function App() {
               <PanelBottom size={13} />
               任务记录<span>{tasks.length}</span>
             </button>
-            <span className="demo-footer">
-              {window.svnx
-                ? "本机执行 · 提交前核对范围 · 还原前备份"
-                : "浏览器预览"}
-            </span>
+            {!window.svnx && <span className="demo-footer">浏览器预览</span>}
             <div className="statusbar-right">
               <span
                 className="footer-engine-status"
