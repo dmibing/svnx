@@ -330,21 +330,6 @@ export default function App() {
   };
   return (
     <div className="app-shell">
-      <header className="titlebar">
-        <div className="titlebar-right">
-          <span className="demo-tag">
-            <span className="status-dot" />
-            {version}
-          </span>
-          <button
-            className="icon-button"
-            title="使用帮助"
-            onClick={() => setModal({ kind: "help", paths: [] })}
-          >
-            <CircleHelp size={16} />
-          </button>
-        </div>
-      </header>
       <div className="app-body">
         {sidebarCollapsed && (
           <div className="sidebar-rail">
@@ -475,7 +460,17 @@ export default function App() {
                 <img src="./brand.png" alt="" aria-hidden="true" />
                 SVNX
               </span>
-              <span>{version}</span>
+              <span className="sidebar-version-actions">
+                <span>{version}</span>
+                <button
+                  className="icon-button"
+                  title="使用帮助"
+                  aria-label="使用帮助"
+                  onClick={() => setModal({ kind: "help", paths: [] })}
+                >
+                  <CircleHelp size={14} />
+                </button>
+              </span>
             </div>
           </div>
         </aside>
