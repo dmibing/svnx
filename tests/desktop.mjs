@@ -192,7 +192,7 @@ try {
   await expect(page.getByText("3 个变更文件", { exact: true })).toBeVisible();
   await page
     .locator(".workspace-actions")
-    .getByRole("button", { name: "更新", exact: true })
+    .getByRole("button", { name: /^更新/ })
     .click();
   await page
     .getByRole("dialog")
@@ -263,6 +263,18 @@ try {
     timeout: 15000,
   });
   await expect(page.locator(".history-row").first()).toContainText("完善路由");
+  await page.locator(".history-row").first().click({ button: "right" });
+  await expect(page.getByRole("menu", { name: "历史记录操作" })).toBeVisible();
+  await page.getByRole("menuitem", { name: /还原到此版本/ }).click();
+  await expect(page.locator("#update-revision")).toHaveValue("2");
+  await expect(page.getByRole("dialog")).toContainText("不修改服务器历史");
+  await page.keyboard.press("Escape");
+  await page.locator(".history-row").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "与上一版本比较" }).click();
+  await expect(page.locator(".monaco-diff-editor")).toBeVisible({
+    timeout: 15000,
+  });
+  await page.getByRole("button", { name: /返回历史/ }).click();
   await expect(
     page.getByRole("combobox", { name: "原始版本", exact: true }),
   ).toHaveText("r1");

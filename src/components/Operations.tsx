@@ -35,6 +35,7 @@ export const titles: Record<string, string> = {
 };
 export default function Operations({
   kind,
+  initialRevision = "HEAD",
   workspace,
   paths,
   execute,
@@ -43,6 +44,7 @@ export default function Operations({
   onSelect,
 }: {
   kind: string;
+  initialRevision?: string;
   workspace: Workspace;
   paths: string[];
   execute: Execute;
@@ -56,7 +58,7 @@ export default function Operations({
     [message, setMessage] = useState(""),
     [value, setValue] = useState(""),
     [name, setName] = useState(""),
-    [revision, setRevision] = useState("HEAD"),
+    [revision, setRevision] = useState(initialRevision),
     [properties, setProperties] = useState<{ name: string; value: string }[]>(
       [],
     ),
@@ -400,6 +402,12 @@ export default function Operations({
       )}
       {kind === "update" && (
         <>
+          {initialRevision !== "HEAD" && (
+            <p className="modal-note">
+              还原到 r{initialRevision}
+              ：将下列本地范围更新到历史版本，不修改服务器历史，也不会自动提交。本地未提交修改会参与合并，可能产生冲突；请先提交或备份需要保留的修改。
+            </p>
+          )}
           <p className="modal-caption">
             更新范围：
             {paths.length === 1 && !first ? "整个工作副本" : paths.join("、")}

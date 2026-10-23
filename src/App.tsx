@@ -60,9 +60,11 @@ export default function App() {
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("modified"),
     [menu, setMenu] = useState(false),
-    [modal, setModal] = useState<{ kind: string; paths: string[] } | null>(
-      null,
-    ),
+    [modal, setModal] = useState<{
+      kind: string;
+      paths: string[];
+      revision?: string;
+    } | null>(null),
     [comparison, setComparison] = useState<Comparison | null>(null),
     [historyScope, setHistoryScope] = useState(""),
     [tasksOpen, setTasksOpen] = useState(false),
@@ -635,6 +637,13 @@ export default function App() {
                     key={`${current.id}:${historyScope}`}
                     workspace={current}
                     scope={historyScope}
+                    onRestore={(revision) =>
+                      setModal({
+                        kind: "update",
+                        paths: [historyScope],
+                        revision: String(revision),
+                      })
+                    }
                     onCompare={setComparison}
                     onError={onError}
                   />
@@ -880,6 +889,7 @@ export default function App() {
           <Operations
             key={`${current.id}:${modal.kind}:${modal.paths.join()}`}
             kind={modal.kind}
+            initialRevision={modal.revision}
             workspace={current}
             paths={modal.paths}
             execute={execute}

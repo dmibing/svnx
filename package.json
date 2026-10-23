@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",

@@ -4,16 +4,19 @@ import type { LogEntry, Workspace } from "../types";
 import { run } from "../client";
 import type { Comparison } from "./DiffView";
 import Select from "./Select";
+import Dialog from "./Dialog";
 export default function HistoryView({
   workspace,
   scope,
   onCompare,
   onError,
+  onRestore,
 }: {
   workspace: Workspace;
   scope: string;
   onCompare: (comparison: Comparison) => void;
   onError: (error: Error) => void;
+  onRestore: (revision: number) => void;
 }) {
   const [entries, setEntries] = useState<LogEntry[]>([]),
     [selected, setSelected] = useState<LogEntry | null>(null),
@@ -22,6 +25,39 @@ export default function HistoryView({
     [hasMore, setHasMore] = useState(true),
     [oldRev, setOldRev] = useState(""),
     [newRev, setNewRev] = useState("");
+  const [context, setContext] = useState<{
+    entry: LogEntry;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [compareEntry, setCompareEntry] = useState<LogEntry | null>(null);
+  useEffect(() => {
+    if (!context) return;
+    const close = () => setContext(null);
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", key);
+    };
+  }, [context]);
+  const comparePrevious = (entry: LogEntry, p: LogEntry["paths"][number]) => {
+    setCompareEntry(null);
+    onCompare({
+      path: p.path.replace(/^\//, ""),
+      repositoryPath: p.path,
+      oldRevision: String(Math.max(0, entry.revision - 1)),
+      newRevision: String(entry.revision),
+      peg: p.action === "D" ? entry.revision - 1 : entry.revision,
+    });
+  };
   const load = async (start?: number) => {
     setLoading(true);
     try {
@@ -68,6 +104,58 @@ export default function HistoryView({
     }));
   return (
     <>
+      {context && (
+        <div
+          className="history-context-menu"
+          role="menu"
+          aria-label="历史记录操作"
+          style={{ left: context.x, top: context.y }}
+        >
+          <button
+            role="menuitem"
+            onClick={() => {
+              const entry = context.entry;
+              setContext(null);
+              onRestore(entry.revision);
+            }}
+          >
+            还原到此版本（r{context.entry.revision}）
+          </button>
+          <button
+            role="menuitem"
+            disabled={
+              !context.entry.paths.length || context.entry.revision === 0
+            }
+            onClick={() => {
+              const entry = context.entry;
+              setContext(null);
+              if (entry.paths.length === 1)
+                comparePrevious(entry, entry.paths[0]);
+              else setCompareEntry(entry);
+            }}
+          >
+            与上一版本比较
+          </button>
+        </div>
+      )}
+      {compareEntry && (
+        <Dialog
+          title={`与上一版本比较 · r${compareEntry.revision - 1} → r${compareEntry.revision}`}
+          onClose={() => setCompareEntry(null)}
+        >
+          <p className="modal-caption">选择此提交中的路径查看差异。</p>
+          {compareEntry.paths.map((p) => (
+            <button
+              key={p.path}
+              className="historical-path"
+              onClick={() => comparePrevious(compareEntry, p)}
+            >
+              <span>{p.path}</span>
+              <span>{p.action}</span>
+            </button>
+          ))}
+        </Dialog>
+      )}
       <section className="change-panel">
         <div className="search-row">
           <div className="search-input">
@@ -95,6 +183,23 @@ export default function HistoryView({
               <button
                 key={r.revision}
                 className={`history-row ${selected?.revision === r.revision ? "selected" : ""}`}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setSelected(r);
+                  setOldRev(String(Math.max(0, r.revision - 1)));
+                  setNewRev(String(r.revision));
+                  setContext({
+                    entry: r,
+                    x: Math.max(
+                      8,
+                      Math.min(event.clientX, window.innerWidth - 240),
+                    ),
+                    y: Math.max(
+                      8,
+                      Math.min(event.clientY, window.innerHeight - 100),
+                    ),
+                  });
+                }}
                 onClick={() => {
                   setSelected(r);
                   setOldRev(String(Math.max(0, r.revision - 1)));
