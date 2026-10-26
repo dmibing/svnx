@@ -176,7 +176,14 @@ export default function App() {
       ) {
         notify(`${operationNames[method] || method}完成`);
         if (
-          ["commit", "revert", "delete", "untrack", "move"].includes(method)
+          [
+            "commit",
+            "revert",
+            "delete",
+            "untrack",
+            "untrackAndIgnore",
+            "move",
+          ].includes(method)
         ) {
           setChecked([]);
           setSelected(null);
@@ -815,6 +822,9 @@ export default function App() {
                         comparison={comparison}
                         onError={onError}
                         onConflict={() => action("conflict")}
+                        onResolved={async () => {
+                          await useClient.getState().refresh(selectedId, true);
+                        }}
                         emptyState={{
                           title: clean ? "暂无待提交的变更" : "当前筛选无结果",
                           description: clean

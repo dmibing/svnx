@@ -484,6 +484,7 @@ export default function FilesPanel({
                 {[
                   ["add", "添加到版本控制"],
                   ["untrack", "停止跟踪（保留本地文件）"],
+                  ["untrackAndIgnore", "停止跟踪并忽略（保留本地文件）"],
                   ["delete", "删除并保留备份"],
                   ["deleteDirect", "直接删除（不备份）"],
                   ["move", "移动／重命名"],

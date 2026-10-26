@@ -42,6 +42,7 @@ export const operationNames: Record<string, string> = {
   add: "添加",
   delete: "删除",
   untrack: "停止跟踪",
+  untrackAndIgnore: "停止跟踪并忽略",
   move: "移动／重命名",
   ignore: "设置忽略",
   saveIgnoreRules: "保存忽略规则",

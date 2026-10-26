@@ -60,15 +60,25 @@ try {
     env: { ...process.env, SVNX_TEST_DATA: data, SVNX_DEV_URL: "" },
   });
   const page = await app.firstWindow();
-  await expect(
-    page.getByRole("heading", { name: /本地变更/ }),
-  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole("heading", { name: /本地变更/ })).toBeVisible({
+    timeout: 30000,
+  });
   // A deterministic large remote history tests rendering and page requests;
   // real SVN pagination is covered separately by the integration suite.
   await app.evaluate(({ ipcMain }) => {
     globalThis.historyRequests = [];
     ipcMain.removeHandler("svnx:run");
     ipcMain.handle("svnx:run", async (_, request) => {
+      if (request.method === "diff")
+        return {
+          ok: true,
+          data: {
+            path: request.params.path,
+            before: "original",
+            after: "modified",
+          },
+        };
+      if (request.method === "info") return { ok: true, data: {} };
       if (request.method !== "log") return { ok: true, data: [] };
       globalThis.historyRequests.push(request.params);
       await new Promise((resolve) => setTimeout(resolve, 80));

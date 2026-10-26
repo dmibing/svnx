@@ -22,6 +22,7 @@ import { Badge } from "./FilesPanel";
 import Select from "./Select";
 import FileIcon from "./FileIcon";
 const Editor = lazy(() => import("../Editor"));
+const ConflictEditor = lazy(() => import("./ConflictEditor"));
 export interface Comparison {
   path: string;
   oldRevision: string;
@@ -38,6 +39,7 @@ export default function DiffView({
   onError,
   onConflict,
   emptyState,
+  onResolved,
 }: {
   workspace: Workspace;
   file: FileEntry | null;
@@ -45,6 +47,7 @@ export default function DiffView({
   comparison: Comparison | null;
   onError: (e: Error) => void;
   onConflict: () => void;
+  onResolved: () => Promise<void>;
   emptyState?: { title: string; description: string; actions: ReactNode };
 }) {
   const [data, setData] = useState<Diff | null>(null),
@@ -57,6 +60,8 @@ export default function DiffView({
     [direction, setDirection] = useState({ index: 0, forward: true });
   const sequence = useRef(0);
   const target = comparison?.path ?? file?.path;
+  const textConflict =
+    !comparison && file?.status === "conflicted" && !file.treeConflict;
   useEffect(() => {
     setLoadLarge(false);
     setEncoding("auto");
@@ -71,7 +76,7 @@ export default function DiffView({
     loadLarge,
   };
   useEffect(() => {
-    if (target === undefined) return;
+    if (target === undefined || textConflict) return;
     const index = ++sequence.current,
       id = crypto.randomUUID();
     setLoading(true);
@@ -98,7 +103,21 @@ export default function DiffView({
     encoding,
     loadLarge,
     file,
+    textConflict,
   ]);
+  if (textConflict && target !== undefined)
+    return (
+      <Suspense fallback={<div className="empty">正在加载冲突编辑器…</div>}>
+        <ConflictEditor
+          key={`${workspace.id}:${target}`}
+          workspace={workspace}
+          path={target}
+          dark={dark}
+          onResolved={onResolved}
+          onOther={onConflict}
+        />
+      </Suspense>
+    );
   if (target === undefined)
     return (
       <div className="empty diff-empty">

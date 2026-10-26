@@ -23,6 +23,7 @@ export const titles: Record<string, string> = {
   delete: "删除文件",
   deleteDirect: "直接删除（不备份）",
   untrack: "停止跟踪（保留本地文件）",
+  untrackAndIgnore: "停止跟踪并忽略（保留本地文件）",
   move: "移动／重命名",
   update: "更新工作副本",
   ignore: "设置忽略",
@@ -434,21 +435,26 @@ export default function Operations({
           {footer(() => execute("add", { paths }), "添加", !paths.length)}
         </>
       )}
-      {kind === "untrack" && (
+      {["untrack", "untrackAndIgnore"].includes(kind) && (
         <>
           <div className="warning-box">
             <AlertTriangle size={18} />
             <div>
               <strong>保留本地内容，标记为从仓库删除</strong>
               <p>
-                目录操作包含子目录。执行后会产生待提交的删除记录；提交后，其他成员拉取时会同步移除这些路径。不会自动提交，也不会自动添加忽略规则。
+                目录操作包含子目录。执行后会产生待提交的删除记录；提交后，其他成员拉取时会同步移除这些路径。不会自动提交。
+                {kind === "untrackAndIgnore"
+                  ? "同时在各自父目录添加忽略规则；提交删除记录和目录属性后完成共享。"
+                  : "不会自动添加忽略规则。"}
               </p>
             </div>
           </div>
           <pre className="path-preview">{paths.join("\n")}</pre>
           {footer(
-            () => execute("untrack", { paths }),
-            "停止跟踪并保留本地文件",
+            () => execute(kind, { paths }),
+            kind === "untrackAndIgnore"
+              ? "停止跟踪并添加忽略"
+              : "停止跟踪并保留本地文件",
             !paths.length,
             true,
           )}

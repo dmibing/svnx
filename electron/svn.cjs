@@ -206,6 +206,7 @@ class SvnService {
           (e) =>
             !["normal", "none", "external"].includes(e.status) ||
             e.props === "modified" ||
+            e.props === "conflicted" ||
             e.treeConflict ||
             e.lock,
         );
@@ -508,15 +509,20 @@ class SvnService {
             ),
           ),
         };
+      case "untrackAndIgnore":
       case "untrack": {
         // Validate every target before scheduling any removal. Parent selections
         // subsume descendants so SVN never processes the same entry twice.
         const full = await Promise.all(p.paths.map((f) => this.guard(root, f)));
         if (full.includes(root))
           throw new SvnError("不能停止跟踪工作副本根目录", "VALIDATION");
-        const unique = [...new Set(p.paths)].sort(
-          (a, b) => a.length - b.length,
-        );
+        const unique = [
+          ...new Set(
+            full.map((target) =>
+              path.relative(root, target).replaceAll("\\", "/"),
+            ),
+          ),
+        ].sort((a, b) => a.length - b.length);
         const chosen = [];
         for (const target of unique) {
           if (chosen.some((parent) => target.startsWith(`${parent}/`)))
@@ -525,15 +531,66 @@ class SvnService {
           await xml(["info", "--xml", "--", await local(target)]);
           chosen.push(target);
         }
-        return {
-          output: decodeOutput(
-            await batch(
-              "delete",
-              ["--keep-local", "--force"],
-              await Promise.all(chosen.map(local)),
-            ),
+        const ignores = new Map();
+        if (method === "untrackAndIgnore") {
+          for (const target of chosen) {
+            const parent =
+              path.posix.dirname(target) === "."
+                ? ""
+                : path.posix.dirname(target);
+            if (!ignores.has(parent)) {
+              await xml(["info", "--xml", "--", await local(parent)]);
+              await readRules(xml, await this.guard(root, parent), hash);
+              ignores.set(parent, []);
+            }
+            ignores
+              .get(parent)
+              .push(
+                [...path.posix.basename(target)]
+                  .map(
+                    (c) =>
+                      ({ "*": "[*]", "?": "[?]", "[": "[[]", "]": "[]]" })[c] ||
+                      c,
+                  )
+                  .join(""),
+              );
+          }
+        }
+        const output = decodeOutput(
+          await batch(
+            "delete",
+            ["--keep-local", "--force"],
+            await Promise.all(chosen.map(local)),
           ),
-        };
+        );
+        try {
+          for (const [parent, patterns] of ignores) {
+            const currentRules = await readRules(
+              xml,
+              await this.guard(root, parent),
+              hash,
+            );
+            await this.setProperty(
+              cli,
+              await local(parent),
+              "svn:ignore",
+              [
+                ...new Set([
+                  ...currentRules.own["svn:ignore"]
+                    .split(/\r?\n/)
+                    .filter(Boolean),
+                  ...patterns,
+                ]),
+              ].join("\n"),
+            );
+          }
+        } catch (error) {
+          throw new SvnError(
+            `已停止跟踪并保留本地内容，但忽略规则未全部保存，请刷新并补充忽略规则。${error.message}`,
+            error.code || "SVN",
+          );
+        }
+        return { output };
       }
       case "delete": {
         const full = await Promise.all(p.paths.map((f) => this.guard(root, f)));
@@ -709,6 +766,18 @@ class SvnService {
         };
       }
       case "resolve": {
+        const latest = (await xml(["info", "--xml", await local(p.path)])).info
+          .entry;
+        if (
+          !array(latest.conflict).some(
+            (conflict) => conflict.type === p.kind,
+          ) &&
+          !(p.kind === "tree" && latest["tree-conflict"])
+        )
+          throw new SvnError(
+            "此冲突已被其他操作处理，请刷新后重新检查",
+            "STALE",
+          );
         const full = await this.guard(root, p.path);
         const current = await fs.readFile(full).catch((e) => {
           if (["ENOENT", "EISDIR"].includes(e.code)) return empty();
@@ -728,7 +797,7 @@ class SvnService {
         if (p.content !== undefined) {
           if (p.kind !== "text")
             throw new SvnError("只有文本冲突可以写入合并结果", "VALIDATION");
-          if (/^(<{7}|={7}|>{7})/m.test(p.content))
+          if (/^(<{7}|={7}|>{7}|\|{7})/m.test(p.content))
             throw new SvnError("合并结果仍包含冲突标记", "VALIDATION");
           const decoded = decode(current);
           if (decoded.binary)

@@ -25,6 +25,79 @@
   --shadow: 0 16px 60px #18243c26;
   color-scheme: light;
 }
+.merge-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+.merge-view > .diff-heading {
+  flex-shrink: 0;
+}
+.merge-status {
+  color: var(--orange);
+  font-size: 12px;
+  margin-left: auto;
+}
+.merge-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.merge-toolbar > span {
+  color: var(--soft);
+  margin-right: auto;
+}
+.merge-toolbar .button {
+  padding: 2px 7px;
+  min-height: 28px;
+  font-size: 12px;
+}
+.merge-sources {
+  flex: 1;
+  min-height: 150px;
+  position: relative;
+}
+.merge-result {
+  flex: 1;
+  min-height: 180px;
+  position: relative;
+}
+.merge-result-editor {
+  position: absolute;
+  inset: 0;
+}
+.merge-save {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.merge-save > span,
+.merge-note {
+  color: var(--soft);
+  font-size: 12px;
+}
+.merge-note,
+.merge-error {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.merge-error {
+  color: var(--red);
+  overflow-wrap: anywhere;
+}
 :root[data-theme="dark"] {
   --bg: #242424;
   --sidebar: #202020;

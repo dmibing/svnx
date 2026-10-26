@@ -125,3 +125,88 @@ export default function Editor({
     />
   );
 }
+
+export function ResultEditor({
+  path,
+  value,
+  dark,
+  onChange,
+  disabled = false,
+  reveal,
+}: {
+  path: string;
+  value: string;
+  dark: boolean;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  reveal?: { index: number; offset: number };
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const callback = useRef(onChange);
+  callback.current = onChange;
+  useEffect(() => {
+    const model = monaco.editor.createModel(value, editorLanguage(path, value));
+    const editor = monaco.editor.create(container.current!, {
+      model,
+      readOnly: false,
+      fontSize: 14,
+      lineHeight: 24,
+      fontFamily: 'Consolas, "Cascadia Code", "Microsoft YaHei UI", monospace',
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      automaticLayout: false,
+      ariaLabel: "冲突合并结果",
+    });
+    editorRef.current = editor;
+    const first = value.search(/^<{7}/m);
+    if (first >= 0) {
+      const position = model.getPositionAt(first);
+      editor.setPosition(position);
+      editor.revealPositionInCenter(position);
+    }
+    const listener = model.onDidChangeContent(() =>
+      callback.current(model.getValue()),
+    );
+    const observer = new ResizeObserver(() => editor.layout());
+    observer.observe(container.current!);
+    return () => {
+      observer.disconnect();
+      listener.dispose();
+      editor.dispose();
+      model.dispose();
+      editorRef.current = null;
+    };
+  }, [path]);
+  useEffect(() => {
+    const editor = editorRef.current,
+      model = editor?.getModel();
+    if (!editor || !model || model.getValue() === value) return;
+    editor.pushUndoStop();
+    editor.executeEdits("merge-choice", [
+      { range: model.getFullModelRange(), text: value },
+    ]);
+    editor.pushUndoStop();
+  }, [value]);
+  useEffect(() => {
+    monaco.editor.setTheme(dark ? "svnx-dark" : "vs");
+  }, [dark]);
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly: disabled });
+  }, [disabled]);
+  useEffect(() => {
+    const editor = editorRef.current,
+      model = editor?.getModel();
+    if (!editor || !model || !reveal) return;
+    const position = model.getPositionAt(reveal.offset);
+    editor.setPosition(position);
+    editor.revealPositionInCenter(position);
+  }, [reveal]);
+  return (
+    <div
+      ref={container}
+      className="merge-result-editor"
+      aria-label="合并结果编辑区"
+    />
+  );
+}
