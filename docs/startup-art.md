@@ -18,4 +18,4 @@
 
 `scripts/build-portable.cjs` 使用 electron-builder 的自定义 NSIS 脚本 `build/portable.nsi` 生成便携包，不修改依赖包中的模板。脚本先释放动画程序，再解压 Electron 到每次运行独立的临时目录。主界面初始化完成后，通过受限的 preload IPC 通知主进程显示窗口，并写入本次启动的临时就绪标记；辅助程序收到标记、启动进程终止或达到两分钟保护上限后退出。不设置最短展示时间。
 
-原生动画跟随 Windows 客户端动画设置；正式启动后的共享 `public/startup.html`、`public/startup.css` 跟随减少动态效果设置。`node tests/native-startup.mjs` 验证真实绘制帧与退出清理，`node tests/desktop-startup.mjs` 验证窗口交接和失败重试。
+原生动画跟随 Windows 客户端动画设置；正式启动后的共享 `public/startup.html`、`public/startup.css` 跟随减少动态效果设置。减少动态效果时取消横向追逐，保留较慢的四帧原地小步跑。`node tests/native-startup.mjs` 验证普通和减少动态效果下的真实绘制帧与退出清理，`node tests/desktop-startup.mjs` 验证窗口交接和失败重试。

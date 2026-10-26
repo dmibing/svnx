@@ -34,14 +34,14 @@ internal sealed class StartupSplash : Form {
         try {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            using (var splash = new StartupSplash(pid, args[1], args.Length > 2 ? args[2] : null)) {
+            using (var splash = new StartupSplash(pid, args[1], args.Length > 2 ? args[2] : null, args.Length > 3 && args[3] == "--reduced-motion")) {
                 Application.Run(splash);
             }
             return 0;
         } catch { return 1; } // Failure must never block the actual application.
     }
 
-    StartupSplash(int pid, string readyFile, string probe) {
+    StartupSplash(int pid, string readyFile, string probe, bool testReducedMotion) {
         this.readyFile = readyFile;
         this.probe = probe;
         parent = OpenProcess(0x00100000, false, pid); // SYNCHRONIZE; no process termination rights.
@@ -49,7 +49,7 @@ internal sealed class StartupSplash : Form {
         logo = LoadImageResource("brand.png");
         bool clientAnimations = true;
         SystemParametersInfo(0x1042, 0, ref clientAnimations, 0); // SPI_GETCLIENTAREAANIMATION
-        animate = clientAnimations;
+        animate = clientAnimations && !(probe != null && testReducedMotion);
         Text = "SVNX 正在启动";
         ClientSize = new Size(460, 244);
         FormBorderStyle = FormBorderStyle.None;
@@ -70,7 +70,7 @@ internal sealed class StartupSplash : Form {
                 Close();
                 return;
             }
-            if (animate) Invalidate();
+            Invalidate();
         };
         timer.Start();
     }
@@ -93,7 +93,8 @@ internal sealed class StartupSplash : Form {
         using (var muted = new SolidBrush(Color.FromArgb(176, 176, 176)))
             g.DrawString("正在准备运行环境", font, muted, 32, 123);
 
-        int frame = animate ? (int)(clock.ElapsedMilliseconds / 120 % 4) : 0;
+        // Reduced motion avoids travel while retaining the gentle running poses.
+        int frame = (int)(clock.ElapsedMilliseconds / (animate ? 120 : 160) % 4);
         float progress = animate ? (clock.ElapsedMilliseconds % 3800) / 3800f : 0.42f;
         var clip = g.Save();
         g.SetClip(new Rectangle(32, 148, 396, 73));

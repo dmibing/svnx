@@ -151,13 +151,14 @@
 @media (prefers-reduced-motion: reduce) {
   .startup-indicator::before,
   .startup-indicator::after {
-    animation: none;
+    animation: startup-cat-frames 0.64s steps(1) infinite;
     will-change: auto;
   }
   .startup-indicator::before {
     transform: translateX(70px);
   }
   .startup-indicator::after {
+    animation-name: startup-mouse-frames;
     transform: translateX(145px);
   }
 }

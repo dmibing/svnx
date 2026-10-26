@@ -13,6 +13,8 @@ export type Status =
   | "normal";
 export interface FileEntry {
   directory?: boolean;
+  symlink?: boolean;
+  scanError?: string;
   id: string;
   path: string;
   status: Status;

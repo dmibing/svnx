@@ -232,7 +232,8 @@ export default function FilesPanel({
         <span className="file-heading-name">
           <span className="file-heading-caption">文件 </span>
           <small className="file-visible-count">
-            {visible.length.toLocaleString("zh-CN")} 个文件
+            {visible.length.toLocaleString("zh-CN")}{" "}
+            {visible.some((file) => file.directory) ? "项" : "个文件"}
           </small>
         </span>
         <span className="file-state-heading">状态</span>
@@ -395,10 +396,18 @@ export default function FilesPanel({
                     )
                   }
                 />
-                <FileIcon path={file.path} />
+                {file.directory ? (
+                  <Folder size={16} />
+                ) : (
+                  <FileIcon path={file.path} />
+                )}
                 <div
                   className="file-name"
-                  title={file.path || "工作副本根目录"}
+                  title={
+                    file.scanError
+                      ? `${file.path} · ${file.scanError}`
+                      : file.path || "工作副本根目录"
+                  }
                 >
                   <span>
                     {file.path.split("/").at(-1) || "工作副本根目录"}

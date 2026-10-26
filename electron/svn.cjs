@@ -9,6 +9,7 @@ const { schemas } = require("./contracts.cjs");
 const { BackupStore } = require("./backup.cjs");
 const { updateResult } = require("./update-result.cjs");
 const { readRules, previewRules } = require("./ignore-rules.cjs");
+const { clientIgnorePatterns, ignoreMatcher } = require("./client-ignores.cjs");
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
@@ -167,7 +168,7 @@ class SvnService {
         ...array(data.status?.target).flatMap((t) => array(t.entry)),
         ...array(data.status?.changelist).flatMap((t) => array(t.entry)),
       ];
-      return entries
+      const files = entries
         .map((entry) => {
           const s = entry["wc-status"];
           const absolute = path.isAbsolute(entry.path)
@@ -210,6 +211,113 @@ class SvnService {
             e.treeConflict ||
             e.lock,
         );
+      // SVN reports an unversioned directory only once, even at depth infinity.
+      // Expand it locally so its children can be searched and selected separately.
+      const seen = new Set(files.map((file) => file.path));
+      let cursor = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(files.length, 8) }, async () => {
+          while (cursor < files.length) {
+            if (signal?.aborted) throw new SvnError("操作已取消", "CANCELLED");
+            const entry = files[cursor++];
+            const stat = await fs
+              .lstat(path.resolve(root, entry.path))
+              .catch((error) => {
+                if (
+                  ["ENOENT", "EACCES", "EPERM", "EINVAL"].includes(error.code)
+                )
+                  return null;
+                throw error;
+              });
+            if (stat) {
+              entry.directory = stat.isDirectory();
+              entry.symlink = stat.isSymbolicLink();
+            }
+          }
+        }),
+      );
+      const clientPatterns = files.some(
+        (entry) => entry.status === "unversioned" && entry.directory,
+      )
+        ? await clientIgnorePatterns()
+        : [];
+      const rulesByParent = new Map();
+      const inheritedMatch = async (entry) => {
+        const parent = path.dirname(path.resolve(root, entry.path));
+        if (!rulesByParent.has(parent))
+          rulesByParent.set(
+            parent,
+            readRules(xml, parent, hash).then((rules) =>
+              ignoreMatcher([
+                ...clientPatterns,
+                ...[
+                  rules.own["svn:global-ignores"],
+                  ...rules.inherited.map((rule) => rule.value),
+                ].flatMap((value) => value.split(/\s+/).filter(Boolean)),
+              ]),
+            ),
+          );
+        return rulesByParent.get(parent);
+      };
+      const expand = async (entry, ignored) => {
+        if (signal?.aborted) throw new SvnError("操作已取消", "CANCELLED");
+        const full = await this.guard(root, entry.path);
+        let stat;
+        try {
+          stat = await fs.lstat(full);
+        } catch (error) {
+          if (error.code === "ENOENT") return;
+          throw error;
+        }
+        if (!stat.isDirectory()) return;
+        entry.directory = true;
+        let children;
+        try {
+          children = await fs.readdir(full, { withFileTypes: true });
+        } catch (error) {
+          if (["ENOENT", "EACCES", "EPERM"].includes(error.code)) {
+            entry.scanError = "目录暂时无法读取，请检查权限后刷新";
+            return;
+          }
+          throw error;
+        }
+        // A nested working copy is a separate boundary, not loose files to add.
+        if (children.some((child) => child.name.toLowerCase() === ".svn")) {
+          entry.scanError = "这是独立工作副本，请单独打开";
+          return;
+        }
+        let inspected = 0;
+        for (const child of children) {
+          if (++inspected % 256 === 0)
+            await new Promise((resolve) => setImmediate(resolve));
+          if (signal?.aborted) throw new SvnError("操作已取消", "CANCELLED");
+          if (child.isSymbolicLink()) continue;
+          const relative = `${entry.path}/${child.name}`;
+          if (seen.has(relative)) continue;
+          seen.add(relative);
+          const file = {
+            ...entry,
+            id: relative,
+            path: relative,
+            directory: child.isDirectory(),
+            status: ignored(child.name) ? "ignored" : "unversioned",
+          };
+          if (file.status === "ignored" && !p.showIgnored) continue;
+          files.push(file);
+          if (file.directory && file.status !== "ignored")
+            await expand(file, ignored);
+        }
+      };
+      for (const entry of [...files]) {
+        if (entry.status !== "unversioned" || !entry.directory || entry.symlink)
+          continue;
+        // guard rejects links; leave existing SVN entries visible without following them.
+        const full = path.resolve(root, entry.path);
+        if ((await fs.lstat(full).catch(() => null))?.isSymbolicLink())
+          continue;
+        await expand(entry, await inheritedMatch(entry));
+      }
+      return files;
     };
     const info = async () => (await xml(["info", "--xml", "."])).info.entry;
     const snapshot = async (entries) => {
@@ -505,7 +613,15 @@ class SvnService {
             await batch(
               "add",
               ["--parents", "--depth", "infinity"],
-              await targets(),
+              await Promise.all(
+                p.paths
+                  .filter(
+                    (target, index, paths) =>
+                      paths.indexOf(target) === index &&
+                      !paths.some((parent) => target.startsWith(parent + "/")),
+                  )
+                  .map(local),
+              ),
             ),
           ),
         };
@@ -909,7 +1025,9 @@ class SvnService {
         }
       } else {
         const full = await this.guard(root, p.path);
-        const entry = (await status(full)).find((e) => e.path === p.path);
+        let entry = (await status(full)).find((e) => e.path === p.path);
+        // SVN cannot query a child beneath an unversioned parent directly.
+        if (!entry) entry = (await status()).find((e) => e.path === p.path);
         let stat;
         try {
           stat = await fs.stat(full);

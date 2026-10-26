@@ -27,24 +27,32 @@ async function publishRelease() {
     throw new Error("GitHub publishing credentials are unavailable.");
   // Keep credentials in stdin only, never in args, files, application bundles or logs.
   const curlConfig = `header = ${JSON.stringify("Authorization: Bearer " + credential.password)}\nheader = "Accept: application/vnd.github+json"\n`;
+  let curl =
+    process.env.SVNX_CURL_PATH ||
+    (process.platform === "win32" ? "curl.exe" : "curl");
+  if (process.platform === "win32" && !process.env.SVNX_CURL_PATH) {
+    const gitTools = execFileSync("git", ["--exec-path"], {
+      encoding: "utf8",
+    }).trim();
+    const bundled = path.resolve(gitTools, "..", "..", "bin", "curl.exe");
+    if (fs.existsSync(bundled)) curl = bundled;
+  }
   function request(url, method = "GET", data, file) {
     const args = [
       "--silent",
       "--show-error",
-      "--http1.1",
       "--connect-timeout",
       "20",
       "--max-time",
       "600",
       "--config",
       "-",
-      "--user-agent",
-      "SVNX-release",
       "--write-out",
       "\n%{http_code}",
       "--request",
       method,
     ];
+    if (method === "GET") args.push("--retry", "2", "--retry-all-errors");
     const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
     if (proxy) args.push("--proxy", proxy);
     if (file)
@@ -62,16 +70,12 @@ async function publishRelease() {
         JSON.stringify(data),
       );
     args.push(url);
-    const out = execFileSync(
-      process.platform === "win32" ? "curl.exe" : "curl",
-      args,
-      {
-        input: curlConfig,
-        encoding: "utf8",
-        maxBuffer: 16 * 1024 * 1024,
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
+    const out = execFileSync(curl, args, {
+      input: curlConfig,
+      encoding: "utf8",
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
     const at = out.lastIndexOf("\n"),
       status = Number(out.slice(at + 1));
     let result;

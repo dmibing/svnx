@@ -10,12 +10,16 @@ const directory = await fs.mkdtemp(
 );
 const executable = path.resolve("build/startup/SVNX.Startup.exe");
 const children = [];
-function launch(parent, name) {
+function launch(parent, name, reduced = false) {
   const ready = path.join(directory, name + ".ready");
   const probe = path.join(directory, name + ".log");
-  const child = spawn(executable, [String(parent), ready, probe], {
-    stdio: "ignore",
-  });
+  const child = spawn(
+    executable,
+    [String(parent), ready, probe, ...(reduced ? ["--reduced-motion"] : [])],
+    {
+      stdio: "ignore",
+    },
+  );
   const exit = new Promise((resolve, reject) => {
     child.once("exit", (code) => resolve(code));
     child.once("error", reject);
@@ -48,6 +52,21 @@ try {
   }, "Native window did not paint all four running poses");
   await fs.writeFile(normal.ready, "ready");
   await exited(normal);
+
+  const reduced = launch(process.pid, "reduced", true);
+  await until(async () => {
+    const rows = (await fs.readFile(reduced.probe, "utf8").catch(() => ""))
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean);
+    return new Set(rows.map((row) => row.split(":")[0])).size === 4;
+  }, "Reduced-motion startup did not paint all four poses");
+  const reducedRows = (await fs.readFile(reduced.probe, "utf8"))
+    .trim()
+    .split(/\r?\n/);
+  assert.equal(new Set(reducedRows.map((row) => row.split(":")[1])).size, 1);
+  await fs.writeFile(reduced.ready, "ready");
+  await exited(reduced);
 
   const parent = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
     stdio: "ignore",

@@ -110,7 +110,27 @@ try {
       .evaluate(
         (element) => getComputedStyle(element, "::after").animationName,
       ),
-  ).toBe("none");
+  ).toBe("startup-mouse-frames");
+  const reducedPoses = [];
+  for (const time of [0, 170, 330, 490]) {
+    reducedPoses.push(
+      await preview.evaluate((time) => {
+        document.getAnimations().forEach((animation) => {
+          animation.pause();
+          animation.currentTime = time;
+        });
+        const element = document.querySelector(".startup-indicator");
+        return {
+          cat: getComputedStyle(element, "::before").backgroundPosition,
+          mouse: getComputedStyle(element, "::after").backgroundPosition,
+          position: getComputedStyle(element, "::before").transform,
+        };
+      }, time),
+    );
+  }
+  expect(new Set(reducedPoses.map((pose) => pose.cat)).size).toBe(4);
+  expect(new Set(reducedPoses.map((pose) => pose.mouse)).size).toBe(4);
+  expect(new Set(reducedPoses.map((pose) => pose.position)).size).toBe(1);
   await app.evaluate(() => globalThis.startupPreview.close());
   const bootstrap = await main.evaluate(() => window.svnx.bootstrap());
   await app.evaluate(({ ipcMain }, response) => {

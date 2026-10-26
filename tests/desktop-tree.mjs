@@ -111,6 +111,44 @@ try {
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "平铺显示", exact: true }).click();
   await expect(page.locator(".tree-folder")).toHaveCount(0);
+  await fs.mkdir(path.join(root, "ThirdParty", ".mimosa"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, "ThirdParty", "library.cs"),
+    "class Library {}\n",
+  );
+  await fs.writeFile(
+    path.join(root, "ThirdParty", ".mimosa", "notes.md"),
+    "notes\n",
+  );
+  await page.keyboard.press("F5");
+  await page.getByRole("combobox", { name: "状态筛选" }).click();
+  await page.getByRole("option", { name: /^未跟踪/ }).click();
+  const directory = page
+    .locator(".file-row")
+    .filter({ has: page.locator('.file-name[title="ThirdParty"]') });
+  await expect(directory.locator("svg.lucide-folder")).toBeVisible();
+  await expect(
+    page.locator('.file-name[title="ThirdParty/library.cs"]'),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "文件树显示", exact: true }).click();
+  await expect(
+    page.locator('.tree-folder-label[title="ThirdParty"]'),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    page.locator('.tree-folder-label[title="ThirdParty/.mimosa"]'),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "搜索文件", exact: true })
+    .fill("notes.md");
+  await page
+    .locator(".file-row:not(.tree-folder)")
+    .filter({ hasText: "notes.md" })
+    .click();
+  await expect(
+    page.locator(".monaco-diff-editor .modified .view-lines"),
+  ).toContainText("notes");
+  await page.getByRole("textbox", { name: "搜索文件", exact: true }).fill("");
+  await page.screenshot({ path: "artifacts/unversioned-directories.png" });
   expect(errors).toEqual([]);
   console.log(
     "PASS: tree grouping, group selection, collapse, search, layout persistence and real keep-local untrack",
