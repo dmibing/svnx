@@ -387,6 +387,32 @@ export default function App() {
     }
     setModal({ kind, paths });
   };
+  if (!booted)
+    return (
+      <main className="startup-screen" role="status" aria-live="polite">
+        <div className="startup-brand">
+          <img src="./brand.png" alt="" />
+          <span>SVNX</span>
+        </div>
+        <p>{error ? "启动未完成" : "正在初始化工作区…"}</p>
+        {error ? (
+          <>
+            <p role="alert">{error.message}</p>
+            <button
+              className="button"
+              onClick={() => {
+                setError(null);
+                void state.initialize().catch(onError);
+              }}
+            >
+              重试启动
+            </button>
+          </>
+        ) : (
+          <div className="startup-indicator" aria-hidden="true" />
+        )}
+      </main>
+    );
   return (
     <div className="app-shell">
       <div className="app-body">

@@ -127,6 +127,15 @@ try {
   await expect(page.locator(".monaco-diff-editor")).toBeVisible({
     timeout: 20000,
   });
+  const whitespaceToggle = page.getByRole("button", {
+    name: "忽略空白",
+    exact: true,
+  });
+  await expect(whitespaceToggle.locator("svg")).toHaveCount(1);
+  await expect(whitespaceToggle).toHaveAttribute("aria-pressed", "false");
+  await whitespaceToggle.click();
+  await expect(whitespaceToggle).toHaveAttribute("aria-pressed", "true");
+  await whitespaceToggle.click();
   await expect(page.locator(".workspace-heading")).toHaveCSS("height", "74px");
   await expect(page.locator(".file-row").first()).toHaveCSS("height", "44px");
   await fs.mkdir("artifacts", { recursive: true });

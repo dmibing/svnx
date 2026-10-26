@@ -824,6 +824,14 @@ select optgroup {
 .file-row:hover {
   background: var(--surface);
 }
+.empty-state-art {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.changes-empty-art { width:44px; height:44px; object-fit:contain; opacity:0.6; }
+:root[data-theme="dark"] .changes-empty-art { filter:invert(1); opacity:0.75; }
 .file-layout-actions {
   display: flex;
   margin-left: 8px;

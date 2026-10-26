@@ -6,9 +6,18 @@
     <meta name="theme-color" content="#f7f8fa" />
     <link rel="icon" href="./brand.png" />
     <title>SVNX</title>
+    <link rel="stylesheet" href="/startup.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="startup-screen" role="status" aria-live="polite">
+        <div class="startup-brand">
+          <img src="./brand.png" alt="" /><span>SVNX</span>
+        </div>
+        <p>正在启动，请稍候…</p>
+        <div class="startup-indicator" aria-hidden="true"></div>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

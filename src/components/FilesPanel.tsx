@@ -7,7 +7,7 @@ import {
   RefreshCw,
   ListFilter,
   FileCode2,
-  CheckCheck,
+  SearchX,
   RotateCcw,
   MoreHorizontal,
   Folder,
@@ -422,9 +422,15 @@ export default function FilesPanel({
         </div>
         {!visible.length && (
           <div className="empty">
-            <CheckCheck size={28} />
-            <strong>{clean ? "工作副本干净" : "当前筛选无结果"}</strong>
-            <span>{clean ? "没有待提交的变更" : "试试其他关键词或状态"}</span>
+            {clean ? (
+              <img src="./empty-state.png" alt="" className="empty-state-art" />
+            ) : (
+              <SearchX size={25} />
+            )}
+            <strong>{clean ? "空空如也" : "当前筛选无结果"}</strong>
+            <span>
+              {clean ? "没有待提交的变更，歇会儿吧。" : "试试其他关键词或状态"}
+            </span>
             {!clean && (
               <button
                 className="button subtle"

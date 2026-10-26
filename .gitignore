@@ -33,3 +33,4 @@ Thumbs.db
 
 /public/file-icons/
 /src/generated/file-icons.json
+/build/portable-splash.bmp

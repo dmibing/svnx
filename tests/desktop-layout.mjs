@@ -55,13 +55,16 @@ try {
     "暂无待提交的变更",
     { timeout: 30000 },
   );
-  await expect(page.locator(".file-list .empty strong")).toHaveText(
-    "工作副本干净",
-  );
+  await expect(page.locator(".file-list .empty strong")).toHaveText("空空如也");
   await expect(
     page.locator(".sidebar-label").filter({ hasText: "当前项目" }),
   ).toHaveCount(0);
   await expect(page.locator(".list-summary")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".empty-state-art")
+      .evaluate((image) => image.complete && image.naturalWidth === 44),
+  ).toBe(true);
   await expect(page.locator(".change-panel")).toHaveCSS("width", "370px");
   await page.getByRole("separator", { name: "调整文件面板宽度" }).dblclick();
   await expect(page.locator(".change-panel")).toHaveCSS("width", "330px");
@@ -103,6 +106,10 @@ try {
   await page.screenshot({ path: "artifacts/layout-empty-light.png" });
   await page.getByTitle("切换主题", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".changes-empty-art")).toHaveCSS(
+    "filter",
+    "invert(1)",
+  );
   expect(
     await page.evaluate(() =>
       getComputedStyle(document.documentElement)

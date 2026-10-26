@@ -15,6 +15,7 @@ import {
   Copy,
   ExternalLink,
   AlertTriangle,
+  Space,
 } from "lucide-react";
 import type { Diff, FileEntry, Workspace } from "../types";
 import { run, bridge, unwrap } from "../client";
@@ -121,9 +122,7 @@ export default function DiffView({
   if (target === undefined)
     return (
       <div className="empty diff-empty">
-        <div className="empty-icon">
-          <Columns2 size={28} />
-        </div>
+        <img src="./changes-empty.png" alt="" className="changes-empty-art" />
         <strong>{emptyState?.title || "选择文件查看差异"}</strong>
         <span>
           {emptyState?.description || "从左侧选择文件，查看修改前后的差异。"}
@@ -182,10 +181,15 @@ export default function DiffView({
           <button
             className={ignore ? "icon-button toggled" : "icon-button"}
             aria-label="忽略空白"
-            title="忽略行首尾空白"
+            aria-pressed={ignore}
+            title={
+              ignore
+                ? "已忽略行首尾空白差异，点击恢复显示"
+                : "忽略行首尾空白差异"
+            }
             onClick={() => setIgnore(!ignore)}
           >
-            ≋
+            <Space size={16} />
           </button>
           <span className="toolbar-divider" />
           <button

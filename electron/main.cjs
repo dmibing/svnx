@@ -457,7 +457,7 @@ async function setup() {
     }
   });
 }
-function createWindow() {
+function createWindow(startup = false) {
   window = new BrowserWindow({
     width: 1440,
     height: 940,
@@ -515,18 +515,32 @@ function createWindow() {
           worker?.postMessage({ method: "$cancel", params: { id } });
     }
   });
+  if (startup)
+    return window.loadFile(
+      path.join(
+        __dirname,
+        app.isPackaged ? "../dist/startup.html" : "../public/startup.html",
+      ),
+    );
+  return loadMainWindow();
+}
+function loadMainWindow() {
+  if (!window || window.isDestroyed()) return;
   if (
     !app.isPackaged &&
     /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.SVNX_DEV_URL || "")
   )
-    window.loadURL(process.env.SVNX_DEV_URL);
-  else window.loadFile(path.join(__dirname, "../dist/index.html"));
+    return window.loadURL(process.env.SVNX_DEV_URL);
+  return window.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 app
   .whenReady()
-  .then(setup)
-  .then(createWindow)
-  .then(scheduleUpdateChecks)
+  .then(async () => {
+    await createWindow(true);
+    await setup();
+    await loadMainWindow();
+    scheduleUpdateChecks();
+  })
   .catch((e) => {
     dialog.showErrorBox("SVNX 启动失败", e.message);
     app.quit();
