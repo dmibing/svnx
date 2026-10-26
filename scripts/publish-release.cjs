@@ -62,16 +62,13 @@ async function publishRelease() {
         "--data-binary",
         "@" + file,
       );
-    else if (data)
-      args.push(
-        "--header",
-        "Content-Type: application/json",
-        "--data-binary",
-        JSON.stringify(data),
-      );
+    else if (data) args.push("--header", "Content-Type: application/json");
     args.push(url);
     const out = execFileSync(curl, args, {
-      input: curlConfig,
+      // JSON via curl config avoids Windows argument quoting corrupting the body.
+      input:
+        curlConfig +
+        (data ? `data-binary = ${JSON.stringify(JSON.stringify(data))}\n` : ""),
       encoding: "utf8",
       maxBuffer: 16 * 1024 * 1024,
       stdio: ["pipe", "pipe", "pipe"],
@@ -85,7 +82,9 @@ async function publishRelease() {
       throw new Error(`GitHub returned a non-JSON response (${status}).`);
     }
     if (status < 200 || status >= 300)
-      throw new Error(`GitHub release request failed (${status}).`);
+      throw new Error(
+        `GitHub release ${method} ${new URL(url).pathname} failed (${status}): ${String(result.message || "Request rejected").slice(0, 300)}`,
+      );
     return result;
   }
   const base = "https://api.github.com/repos/dmibing/svnx";
