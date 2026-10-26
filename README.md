@@ -1,6 +1,6 @@
 # SVNX
 
-基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.18**，优先支持 Windows x64，界面使用简体中文。
+基于 Electron、React 和 TypeScript 的 Subversion 桌面客户端。当前版本为 **0.1.19**，优先支持 Windows x64，界面使用简体中文。
 
 忽略规则入口：工作副本右上角更多菜单 → 忽略规则。可按目录编辑仅此目录或可继承规则、预览匹配的未跟踪内容、查看来源；保存产生 SVN 目录属性变更，需手动提交。不创建或自动同步 `.svnignore` 文件，也不修改本机全局忽略配置。
 
@@ -25,13 +25,15 @@
 
 需要本机安装 **SVN 1.14 或更高版本**。启动后自动检测 `svn`；也可以在“偏好设置”中选择可执行文件。仓库支持本地文件、HTTP(S) 和 svn 协议；svn+ssh 复用本机已有 SSH 配置。
 
-便携版为单个 Windows x64 EXE，无需安装。启动时先显示解压提示，再显示小猫追鼠动画；界面就绪后立即进入工作区。应用设置和操作备份保存在 Electron 的用户数据目录（可通过设置中的“打开备份目录”定位），不保存在 Git 仓库中。
+便携版为单个 Windows x64 EXE，无需安装。解压阶段由独立小窗口播放小猫追鼠动画，主界面就绪后自动交接，不增加额外等待。启动小窗口使用 Windows 自带 .NET Framework，无需另装运行环境。应用设置和操作备份保存在 Electron 的用户数据目录（可通过设置中的“打开备份目录”定位），不保存在 Git 仓库中。
 
 快捷键：`F5` 刷新，`Ctrl+Enter` 打开提交面板，`Ctrl+,` 打开偏好设置，`Esc` 关闭弹窗。
 
 ## 开发与构建
 
 需要 Node.js 22+、npm，以及 SVN。集成测试另外需要 `svnadmin` 和 `svnserve`。
+
+Windows 便携包构建使用系统自带 .NET Framework 4 编译器生成启动小窗口；执行 `npm run dist:portable` 会自动编译并嵌入最终 EXE。
 
 ```sh
 npm ci

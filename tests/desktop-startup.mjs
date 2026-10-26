@@ -15,11 +15,26 @@ try {
   );
   app = await electron.launch({
     args: ["."],
-    env: { ...process.env, SVNX_TEST_DATA: temp, SVNX_DEV_URL: "" },
+    env: {
+      ...process.env,
+      SVNX_TEST_DATA: temp,
+      SVNX_DEV_URL: "",
+      SVNX_STARTUP_SIGNAL: path.join(temp, "startup.ready"),
+    },
   });
   const main = await app.firstWindow();
   await expect(main.locator(".welcome")).toBeVisible({ timeout: 30000 });
   await expect(main.locator(".startup-screen")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      fs.readFile(path.join(temp, "startup.ready"), "utf8").catch(() => ""),
+    )
+    .toBe("ready");
+  expect(
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].isVisible(),
+    ),
+  ).toBe(true);
   const history = await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.navigationHistory.getAllEntries(),
   );
@@ -113,12 +128,10 @@ try {
   ).toBeVisible();
   await main.getByRole("button", { name: "重试启动", exact: true }).click();
   await expect(main.locator(".welcome")).toBeVisible();
-  const bitmap = await fs.readFile("build/portable-splash.bmp");
-  expect(bitmap.toString("ascii", 0, 2)).toBe("BM");
-  expect(bitmap.readInt32LE(18)).toBe(460);
-  expect(bitmap.readInt32LE(22)).toBe(220);
+  const native = await fs.readFile("build/startup/SVNX.Startup.exe");
+  expect(native.toString("ascii", 0, 2)).toBe("MZ");
   console.log(
-    "PASS: startup before main window, shared branded loader, reduced motion, startup error retry, portable BMP asset",
+    "PASS: startup before main window, animated loader, reduced motion, startup error retry, native launcher handoff",
   );
 } finally {
   if (app) await app.close();

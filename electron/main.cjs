@@ -23,6 +23,24 @@ if (process.env.SVNX_DEV_URL) {
   app.setPath("sessionData", sessionDirectory);
 }
 let window, worker, config, configFile, checkoutDirectory;
+const startupSignal = process.env.SVNX_STARTUP_SIGNAL;
+let startupCompleted = false;
+function completeStartup() {
+  if (startupCompleted) return;
+  startupCompleted = true;
+  // The launcher supplies a per-launch temporary directory. Never persist it.
+  if (startupSignal && path.basename(startupSignal) === "startup.ready")
+    fsSync.writeFileSync(startupSignal, "ready");
+}
+ipcMain.on("svnx:startup-ready", (event) => {
+  if (startupCompleted || !window || event.sender !== window.webContents) return;
+  window.show();
+  try {
+    completeStartup();
+  } catch {
+    /* Launcher also watches process lifetime. */
+  }
+});
 let writing = Promise.resolve();
 const pending = new Map(),
   activeTasks = new Map(),
@@ -459,6 +477,7 @@ async function setup() {
 }
 function createWindow(startup = false) {
   window = new BrowserWindow({
+    show: !startupSignal || startupCompleted,
     width: 1440,
     height: 940,
     minWidth: 1060,
@@ -542,6 +561,9 @@ app
     scheduleUpdateChecks();
   })
   .catch((e) => {
+    try {
+      completeStartup();
+    } catch {}
     dialog.showErrorBox("SVNX 启动失败", e.message);
     app.quit();
   });
@@ -550,6 +572,9 @@ app.on("window-all-closed", () => {
 });
 let exiting = false;
 app.on("before-quit", (event) => {
+  try {
+    completeStartup();
+  } catch {}
   clearInterval(updateCheckTimer);
   if (activeTasks.size && !exiting) {
     event.preventDefault();

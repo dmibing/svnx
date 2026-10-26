@@ -113,6 +113,7 @@ export interface Envelope<T> {
   error?: { code: string; message: string };
 }
 export interface SvnxBridge {
+  startupReady(): void;
   bootstrap(): Promise<
     Envelope<{
       version: number;

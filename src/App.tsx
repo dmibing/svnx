@@ -206,6 +206,9 @@ export default function App() {
     return listen();
   }, []);
   useEffect(() => {
+    if (booted || error) window.svnx?.startupReady();
+  }, [booted, error]);
+  useEffect(() => {
     setSelected(null);
     setChecked([]);
     setQuery("");

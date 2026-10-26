@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -12,12 +12,12 @@
     "preview": "vite preview --host 127.0.0.1",
     "pack": "npm run build && electron-builder --win --dir",
     "test": "node --test tests/*.test.cjs",
-    "test:desktop": "npm run build && npm run build:portable-splash && node tests/desktop.mjs && node tests/desktop-tree.mjs && node tests/desktop-history.mjs && node tests/desktop-layout.mjs && node tests/desktop-commit-recovery.mjs && node tests/desktop-merge.mjs && node tests/desktop-startup.mjs",
+    "test:desktop": "npm run build && npm run build:portable-splash && node tests/desktop.mjs && node tests/desktop-tree.mjs && node tests/desktop-history.mjs && node tests/desktop-layout.mjs && node tests/desktop-commit-recovery.mjs && node tests/desktop-merge.mjs && node tests/native-startup.mjs && node tests/desktop-startup.mjs",
     "build:icons": "node scripts/icons.mjs",
     "dist": "npm run build && electron-builder --win nsis --x64",
     "format": "prettier --write src electron scripts tests",
-    "build:portable-splash": "powershell -NoProfile -File scripts/portable-splash.ps1",
-    "dist:portable": "npm run build && npm run build:portable-splash && electron-builder --win portable --x64",
+    "build:portable-splash": "powershell -NoProfile -File scripts/build-native-splash.ps1",
+    "dist:portable": "npm run build && npm run build:portable-splash && node scripts/build-portable.cjs",
     "prestart": "node scripts/file-icons.mjs",
     "predev": "node scripts/file-icons.mjs",
     "predesktop": "node scripts/file-icons.mjs"
@@ -78,7 +78,6 @@
     },
     "artifactName": "SVNX-Setup-${version}-${arch}.exe",
     "portable": {
-      "splashImage": "build/portable-splash.bmp",
       "artifactName": "SVNX-${version}-win-${arch}-portable.exe",
       "requestExecutionLevel": "user"
     }

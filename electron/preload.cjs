@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("svnx", {
+  startupReady: () => ipcRenderer.send("svnx:startup-ready"),
   bootstrap: () => ipcRenderer.invoke("svnx:bootstrap"),
   run: (request) => ipcRenderer.invoke("svnx:run", request),
   cancel: (id) => ipcRenderer.invoke("svnx:cancel", id),
