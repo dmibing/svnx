@@ -122,6 +122,30 @@ export function SettingsDialog({
       </div>
       <div className="settings-update-check">
         <div>
+          <h3>猫咪摆件</h3>
+          <p>状态栏里的蓝白英短；点击互动，无声音。阅读代码时保持安静。</p>
+        </div>
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={settings.statusCat ?? true}
+            disabled={b}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              void action(async () =>
+                set({
+                  settings: unwrap(
+                    await bridge().settings({ statusCat: enabled }),
+                  ),
+                }),
+              );
+            }}
+          />
+          显示猫咪摆件
+        </label>
+      </div>
+      <div className="settings-update-check">
+        <div>
           <h3>远端更新检测</h3>
           <p>后台检测待更新路径，不会自动拉取文件。</p>
         </div>

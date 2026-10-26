@@ -29,7 +29,6 @@ import {
   X,
   AlertTriangle,
   MoreHorizontal,
-  ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -37,7 +36,10 @@ import { useClient, bridge, unwrap, run, listen } from "./client";
 import type { FileEntry, Credentials } from "./types";
 import { operationNames, errorHints } from "./i18n/zh-CN";
 import FilesPanel from "./components/FilesPanel";
-import DiffView, { type Comparison } from "./components/DiffView";
+import DiffView from "./components/DiffView";
+import HistoryFilesPanel from "./components/HistoryFilesPanel";
+import StatusCat from "./components/StatusCat";
+import type { HistoryComparison } from "./history-comparison";
 import HistoryView from "./components/HistoryView";
 import Operations, { type Execute } from "./components/Operations";
 import {
@@ -79,7 +81,7 @@ export default function App() {
       paths: string[];
       revision?: string;
     } | null>(null),
-    [comparison, setComparison] = useState<Comparison | null>(null),
+    [comparison, setComparison] = useState<HistoryComparison | null>(null),
     [historyScope, setHistoryScope] = useState(""),
     [tasksOpen, setTasksOpen] = useState(false),
     [refreshing, setRefreshing] = useState(false),
@@ -782,21 +784,11 @@ export default function App() {
                   <>
                     <section className="change-panel">
                       {comparison ? (
-                        <div className="historical-sidebar">
-                          <button
-                            className="button"
-                            onClick={() => setComparison(null)}
-                          >
-                            <ArrowLeft size={14} />
-                            返回历史记录
-                          </button>
-                          <h3>版本差异</h3>
-                          <p>
-                            r{comparison.oldRevision} → r
-                            {comparison.newRevision}
-                          </p>
-                          <p className="break-path">{comparison.path}</p>
-                        </div>
+                        <HistoryFilesPanel
+                          comparison={comparison}
+                          onSelect={setComparison}
+                          onBack={() => setComparison(null)}
+                        />
                       ) : (
                         <FilesPanel
                           files={changes}
@@ -848,7 +840,7 @@ export default function App() {
                         workspace={current}
                         file={comparison ? null : active}
                         dark={dark}
-                        comparison={comparison}
+                        comparison={comparison?.file ?? null}
                         onError={onError}
                         onConflict={() => action("conflict")}
                         onResolved={async () => {
@@ -978,6 +970,13 @@ export default function App() {
             </button>
             {!window.svnx && <span className="demo-footer">浏览器预览</span>}
             <div className="statusbar-right">
+              {(settings.statusCat ?? true) && (
+                <StatusCat
+                  quiet={Boolean(
+                    current && (comparison || (view === "changes" && active)),
+                  )}
+                />
+              )}
               <span
                 className="footer-engine-status"
                 title={engine || engineError || "未检测到 SVN"}

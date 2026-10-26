@@ -3,7 +3,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search, ChevronRight, FileCode2, ArrowLeft } from "lucide-react";
 import type { LogEntry, Workspace } from "../types";
 import { run, bridge } from "../client";
-import type { Comparison } from "./DiffView";
+import {
+  compareHistoryFile,
+  type HistoryComparison,
+} from "../history-comparison";
 import Select from "./Select";
 import Dialog from "./Dialog";
 import FileIcon from "./FileIcon";
@@ -16,7 +19,7 @@ export default function HistoryView({
 }: {
   workspace: Workspace;
   scope: string;
-  onCompare: (comparison: Comparison) => void;
+  onCompare: (comparison: HistoryComparison) => void;
   onError: (error: Error) => void;
   onRestore: (revision: number) => void;
 }) {
@@ -57,13 +60,7 @@ export default function HistoryView({
   }, [context]);
   const comparePrevious = (entry: LogEntry, p: LogEntry["paths"][number]) => {
     setCompareEntry(null);
-    onCompare({
-      path: p.path.replace(/^\//, ""),
-      repositoryPath: p.path,
-      oldRevision: String(Math.max(0, entry.revision - 1)),
-      newRevision: String(entry.revision),
-      peg: p.action === "D" ? entry.revision - 1 : entry.revision,
-    });
+    onCompare(compareHistoryFile(entry, p));
   };
   const load = useCallback(
     async (start?: number) => {
@@ -396,16 +393,7 @@ export default function HistoryView({
                     next = newRev || String(selected.revision);
                   if (!/^\d+$/.test(old) || !/^\d+$/.test(next))
                     return onError(new Error("请输入非负版本号"));
-                  onCompare({
-                    path: p.path.replace(/^\//, ""),
-                    repositoryPath: p.path,
-                    oldRevision: old,
-                    newRevision: next,
-                    peg:
-                      p.action === "D"
-                        ? selected.revision - 1
-                        : selected.revision,
-                  });
+                  onCompare(compareHistoryFile(selected, p, old, next));
                 }}
               >
                 <FileIcon path={p.path} />

@@ -67,17 +67,20 @@ try {
   // real SVN pagination is covered separately by the integration suite.
   await app.evaluate(({ ipcMain }) => {
     globalThis.historyRequests = [];
+    globalThis.historyDiffRequests = [];
     ipcMain.removeHandler("svnx:run");
     ipcMain.handle("svnx:run", async (_, request) => {
-      if (request.method === "diff")
+      if (request.method === "diff") {
+        globalThis.historyDiffRequests.push(request.params);
         return {
           ok: true,
           data: {
             path: request.params.path,
-            before: "original",
-            after: "modified",
+            before: `original ${request.params.path}`,
+            after: `modified ${request.params.path}`,
           },
         };
+      }
       if (request.method === "info") return { ok: true, data: {} };
       if (request.method !== "log") return { ok: true, data: [] };
       globalThis.historyRequests.push(request.params);
@@ -92,7 +95,24 @@ try {
             author: "tester",
             date: "2023-03-24T10:18:00Z",
             message: `历史提交 ${start - index}`,
-            paths: [{ path: "/README.md", action: "M", kind: "file" }],
+            paths:
+              start - index === 1199
+                ? Array.from({ length: 1000 }, (_, i) => ({
+                    path: `/src/generated/file${i}.cs`,
+                    action: "M",
+                    kind: "file",
+                  }))
+                : [
+                    { path: "/src/a.cs", action: "M", kind: "file" },
+                    {
+                      path: "/src/nested/b.vue",
+                      action: "A",
+                      kind: "file",
+                      copyFrom: "/old/b.vue",
+                      copyRevision: 1190,
+                    },
+                    { path: "/README.md", action: "D", kind: "file" },
+                  ],
           }),
         ),
       };
@@ -134,8 +154,88 @@ try {
   await expect(page.locator(".history-row")).toContainText("历史提交 1200");
   await fs.mkdir("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/history-virtual.png" });
+  const historySearch = page.getByRole("textbox", { name: "搜索已加载历史" });
+  await historySearch.fill("历史提交 1198");
+  await page.locator(".history-row").click();
+  await page.getByRole("combobox", { name: "原始版本", exact: true }).click();
+  await page.getByRole("option", { name: "r1196", exact: true }).click();
+  await page
+    .locator(".historical-path")
+    .filter({ hasText: "/src/a.cs" })
+    .click();
+  const files = page.getByRole("listbox", { name: "本次提交文件" });
+  await expect(files.getByRole("option")).toHaveCount(3);
+  await expect(files.getByRole("option", { selected: true })).toContainText(
+    "a.cs",
+  );
+  await expect(page.locator(".history-files-range")).toHaveText(
+    "比较 r1196 → r1198",
+  );
+  await files.getByRole("option").filter({ hasText: "b.vue" }).click();
+  await expect(page.locator(".diff-heading")).toContainText("b.vue");
+  await expect(files.getByRole("option", { selected: true })).toContainText(
+    "b.vue",
+  );
+  await files.getByRole("option").filter({ hasText: "README.md" }).click();
+  await expect
+    .poll(
+      async () =>
+        (await app.evaluate(() => globalThis.historyDiffRequests)).at(-1)
+          ?.repositoryPath,
+    )
+    .toBe("/README.md");
+  const lastDiff = (
+    await app.evaluate(() => globalThis.historyDiffRequests)
+  ).at(-1);
+  expect(lastDiff.oldRevision).toBe("1196");
+  expect(lastDiff.newRevision).toBe("1198");
+  expect(lastDiff.peg).toBe(1197);
+  expect(lastDiff.commit).toBeUndefined();
+  await page.getByRole("textbox", { name: "搜索本次提交文件" }).fill("nested");
+  await expect(files.getByRole("option")).toHaveCount(1);
+  await files.focus();
+  await page.keyboard.press("Home");
+  await expect(page.locator(".diff-heading")).toContainText("b.vue");
+  await page.getByRole("textbox", { name: "搜索本次提交文件" }).fill("");
+  await page.screenshot({ path: "artifacts/history-commit-files-light.png" });
+  await page.getByRole("button", { name: "浅色", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({ path: "artifacts/history-commit-files-dark.png" });
+  await page.getByRole("button", { name: "返回历史记录", exact: true }).click();
+  await expect(historySearch).toHaveValue("历史提交 1198");
+  await expect(
+    page.locator(".history-row.selected .history-revision"),
+  ).toHaveText("r1198");
+  expect((await app.evaluate(() => globalThis.historyRequests)).length).toBe(
+    20,
+  );
+  await historySearch.fill("历史提交 1199");
+  await page.locator(".history-row").click();
+  await page.locator(".historical-path").first().click();
+  await expect(
+    page.locator(".history-files-list [role=option]").first(),
+  ).toBeVisible();
+  expect(
+    await page.locator(".history-files-list [role=option]").count(),
+  ).toBeLessThan(40);
+  await page.getByRole("listbox", { name: "本次提交文件" }).focus();
+  await page.keyboard.press("End");
+  await expect(
+    page.locator(".history-files-list [role=option][aria-selected=true]"),
+  ).toContainText("file999.cs");
+  await expect(page.locator(".diff-heading")).toContainText("file999.cs");
+  await page.getByRole("button", { name: "返回历史记录", exact: true }).click();
+  await page.locator(".history-row").click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "与上一版本比较", exact: true })
+    .click();
+  await page.getByRole("dialog").locator(".historical-path").first().click();
+  await expect(page.locator(".history-files-title")).toContainText("r1199");
+  await expect(page.locator(".history-files-range")).toHaveText(
+    "比较 r1198 → r1199",
+  );
   console.log(
-    "PASS: 1000 loaded revisions, bounded DOM, 50-item lazy pages, year, preserved selection and search",
+    "PASS: 1000 revisions, lazy paging, commit files navigation, custom range, deleted peg, search, keyboard, 1000-path virtualization, preserved history and context-menu entry",
   );
 } finally {
   if (app) await app.close();

@@ -33,7 +33,8 @@ function completeStartup() {
     fsSync.writeFileSync(startupSignal, "ready");
 }
 ipcMain.on("svnx:startup-ready", (event) => {
-  if (startupCompleted || !window || event.sender !== window.webContents) return;
+  if (startupCompleted || !window || event.sender !== window.webContents)
+    return;
   window.show();
   try {
     completeStartup();
@@ -61,6 +62,7 @@ const readMethods = new Set([
   "revertPlan",
 ]);
 const defaults = {
+  statusCat: true,
   theme: "system",
   listWidth: 330,
   svnPath: "svn",
@@ -294,6 +296,7 @@ async function setup() {
         (k) =>
           ![
             "theme",
+            "statusCat",
             "listWidth",
             "autoCheckUpdates",
             "updateCheckMinutes",
@@ -303,6 +306,8 @@ async function setup() {
       throw new Error("不支持的设置");
     if (patch.theme && !["light", "dark", "system"].includes(patch.theme))
       throw new Error("主题无效");
+    if (patch.statusCat !== undefined && typeof patch.statusCat !== "boolean")
+      throw new Error("猫咪摆件开关无效");
     if (
       patch.listWidth !== undefined &&
       (!Number.isFinite(patch.listWidth) ||

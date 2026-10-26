@@ -110,6 +110,7 @@ interface State {
 export const useClient = create<State>((set, get) => ({
   incomingUpdates: {},
   settings: {
+    statusCat: true,
     autoCheckUpdates: true,
     updateCheckMinutes: 5,
     theme: "system",

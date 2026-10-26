@@ -430,10 +430,10 @@ try {
     .locator(".historical-path")
     .filter({ hasText: "/README.md" })
     .click();
-  await expect(page.locator(".historical-sidebar")).toBeVisible();
+  await expect(page.locator(".history-files-summary")).toBeVisible();
   await page.getByRole("button", { name: "返回历史记录", exact: true }).click();
   await expect(page.locator(".history-list .history-row")).toHaveCount(1);
-  await expect(page.locator(".historical-sidebar")).toHaveCount(0);
+  await expect(page.locator(".history-files-summary")).toHaveCount(0);
   await page.locator(".workspace-tabs .tab").first().click();
   await page.getByRole("combobox", { name: "状态筛选" }).click();
   await page.getByRole("option", { name: /^未跟踪/ }).click();

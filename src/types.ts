@@ -34,6 +34,7 @@ export interface Workspace {
   revision: number;
 }
 export interface Settings {
+  statusCat: boolean;
   autoCheckUpdates: boolean;
   updateCheckMinutes: number;
   theme: Theme;

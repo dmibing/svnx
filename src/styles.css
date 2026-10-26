@@ -2331,16 +2331,76 @@ kbd {
   line-height: 1.6;
   margin-top: 5px;
 }
-.historical-sidebar {
-  padding: 20px;
+.history-files-summary {
+  padding: 16px 17px 10px;
 }
-.historical-sidebar h3 {
-  font-size: 12px;
-  font-weight: 500;
-  margin-top: 25px;
+.history-files-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
 }
-.historical-sidebar p {
+.history-files-summary p {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 6px 0;
+  font-size: 13px;
+}
+.history-files-range {
+  color: var(--muted);
   font-size: 12px;
+}
+.history-files-search {
+  height: 48px;
+  padding-top: 6px;
+  padding-bottom: 10px;
+  flex-shrink: 0;
+}
+.history-files-search .search-input {
+  width: 100%;
+}
+.history-files-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.history-file-row {
+  text-align: left;
+  padding: 0 16px;
+  gap: 9px;
+}
+.history-file-row .badge {
+  flex-shrink: 0;
+}
+.status-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.statusbar .status-cat-button {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.status-cat-sprite {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  bottom: 0;
+  left: 4px;
+  background-repeat: no-repeat;
+  background-size: 128px 64px;
+  pointer-events: none;
+}
+.status-cat-message {
+  max-width: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--soft);
 }
 .file-history {
