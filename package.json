@@ -1,6 +1,6 @@
 {
   "name": "svnx",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "private": true,
   "description": "A focused Subversion desktop client",
   "main": "electron/main.cjs",
@@ -12,20 +12,26 @@
     "preview": "vite preview --host 127.0.0.1",
     "pack": "npm run build && electron-builder --win --dir",
     "test": "node --test tests/*.test.cjs",
-    "test:desktop": "npm run build && npm run build:portable-splash && node tests/desktop.mjs && node tests/desktop-tree.mjs && node tests/desktop-history.mjs && node tests/desktop-cat.mjs && node tests/desktop-layout.mjs && node tests/desktop-commit-recovery.mjs && node tests/desktop-merge.mjs && node tests/native-startup.mjs && node tests/desktop-startup.mjs",
+    "test:desktop": "npm run build && npm run build:portable-splash && node tests/desktop.mjs && node tests/desktop-tree.mjs && node tests/desktop-history.mjs && node tests/desktop-cat.mjs && node tests/desktop-software-update.mjs && node tests/desktop-layout.mjs && node tests/desktop-commit-recovery.mjs && node tests/desktop-merge.mjs && node tests/native-startup.mjs && node tests/desktop-startup.mjs",
     "build:icons": "node scripts/icons.mjs",
-    "dist": "npm run build && electron-builder --win nsis --x64",
+    "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
     "format": "prettier --write src electron scripts tests",
     "build:portable-splash": "powershell -NoProfile -File scripts/build-native-splash.ps1",
     "dist:portable": "npm run build && npm run build:portable-splash && node scripts/build-portable.cjs",
     "prestart": "node scripts/file-icons.mjs",
     "predev": "node scripts/file-icons.mjs",
-    "predesktop": "node scripts/file-icons.mjs"
+    "predesktop": "node scripts/file-icons.mjs",
+    "dist:installer": "npm run build && electron-builder --win nsis --x64 --publish never --config.electronDist=node_modules/electron/dist",
+    "dist:all": "npm run dist:portable && npm run dist:installer",
+    "release:audit": "node scripts/audit-release.cjs",
+    "release:publish": "node scripts/publish-release.cjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.4.1",
     "@radix-ui/themes": "^3.3.0",
     "@tanstack/react-virtual": "^3.14.21",
+    "builder-util-runtime": "^9.7.0",
+    "electron-updater": "^6.8.11",
     "fast-xml-parser": "^5.11.2",
     "iconv-lite": "^0.7.3",
     "lucide-react": "^0.468.0",
@@ -33,6 +39,7 @@
     "monaco-editor": "^0.52.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "semver": "^7.8.5",
     "zod": "^4.6.7",
     "zustand": "^5.0.16"
   },
@@ -43,6 +50,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^45.0.0",
     "electron-builder": "^26.0.0",
+    "js-yaml": "^4.3.2",
     "material-icon-theme": "^5.39.0",
     "png-to-ico": "^3.0.2",
     "pngjs": "^7.0.0",
@@ -74,13 +82,23 @@
       ],
       "language": "2052",
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
     },
     "artifactName": "SVNX-Setup-${version}-${arch}.exe",
     "portable": {
       "artifactName": "SVNX-${version}-win-${arch}-portable.exe",
       "requestExecutionLevel": "user"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dmibing",
+        "repo": "svnx",
+        "releaseType": "release"
+      }
+    ]
   },
   "author": "SVNX contributors",
   "license": "MIT",

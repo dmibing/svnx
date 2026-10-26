@@ -12,6 +12,7 @@ export type Status =
   | "incomplete"
   | "normal";
 export interface FileEntry {
+  directory?: boolean;
   id: string;
   path: string;
   status: Status;
@@ -114,6 +115,9 @@ export interface Envelope<T> {
   error?: { code: string; message: string };
 }
 export interface SvnxBridge {
+  softwareUpdate(
+    action: "status" | "check" | "download" | "cancel" | "install" | "release",
+  ): Promise<Envelope<SoftwareUpdateState>>;
   startupReady(): void;
   bootstrap(): Promise<
     Envelope<{
@@ -144,6 +148,25 @@ export interface SvnxBridge {
     backups?: boolean;
   }): Promise<Envelope<boolean>>;
   onEvent(callback: (event: Record<string, unknown>) => void): () => void;
+}
+export interface SoftwareUpdateState {
+  sequence?: number;
+  phase:
+    | "idle"
+    | "checking"
+    | "unavailable"
+    | "available"
+    | "downloading"
+    | "downloaded"
+    | "installing"
+    | "error";
+  mode: "installed" | "portable" | "manual";
+  currentVersion: string;
+  version?: string;
+  notes?: string;
+  progress?: number;
+  error?: string;
+  releaseUrl: string;
 }
 declare global {
   interface Window {

@@ -5,6 +5,8 @@ build({
   targets: Platform.WINDOWS.createTarget(["nsis"], Arch.x64),
   publish: "never",
   config: {
+    // Never let the portable target overwrite the installer's latest.yml.
+    publish: null,
     electronDist: "node_modules/electron/dist",
     artifactName: "SVNX-${version}-win-${arch}-portable.exe",
     nsis: {

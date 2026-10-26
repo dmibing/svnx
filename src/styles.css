@@ -460,15 +460,17 @@ h1 {
   gap: 12px;
 }
 .revision {
-  font-family: Consolas, monospace;
-  font-size: 12px;
+  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
   font-weight: 400;
   color: var(--muted);
   letter-spacing: 0;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 3px 6px;
+  padding: 1px 6px;
 }
 .workspace-path {
   grid-column: 1 / -1;
@@ -2403,6 +2405,24 @@ kbd {
   text-overflow: ellipsis;
   color: var(--soft);
 }
+.software-update-section {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 18px;
+  font-size: 13px;
+}
+.software-update-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.software-update-heading h3 { margin: 0 0 6px; font-size: 13px; font-weight: 500; }
+.software-update-heading p { margin: 0; color: var(--muted); }
+.software-update-section > button, .software-update-section > div { margin-bottom: 10px; }
+.software-update-section .muted-caption { margin-top: 8px; }
+.software-update-notes { max-height: 140px; overflow: auto; white-space: pre-wrap; font: inherit; color: var(--soft); }
+.software-update-confirm .button { margin-right: 8px; }
 .file-history {
   font-size: 11px;
   color: var(--muted);

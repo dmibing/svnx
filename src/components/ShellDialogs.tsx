@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sun, Moon, Monitor, Check, Loader2, FolderOpen } from "lucide-react";
 import Dialog from "./Dialog";
 import Select from "./Select";
+import SoftwareUpdate from "./SoftwareUpdate";
 import { bridge, unwrap, useClient } from "../client";
 import type { Credentials, Settings, Workspace } from "../types";
 import type { Execute } from "./Operations";
@@ -188,6 +189,7 @@ export function SettingsDialog({
           }))}
         />
       </div>
+      <SoftwareUpdate />
       <p className="modal-note">
         界面语言：简体中文 · 设置自动保存；密码不写入设置。
       </p>

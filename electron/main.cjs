@@ -7,6 +7,7 @@ const {
   nativeTheme,
   shell,
   clipboard,
+  net,
 } = require("electron");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
@@ -15,6 +16,9 @@ const os = require("node:os");
 const { randomUUID } = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { schemas, revision } = require("./contracts.cjs");
+const { SoftwareUpdate, RELEASE_URL } = require("./software-update.cjs");
+let softwareUpdate,
+  installingUpdate = false;
 // Separate Chromium caches when multiple development instances are running.
 if (process.env.SVNX_DEV_URL) {
   const sessionDirectory = fsSync.mkdtempSync(
@@ -255,6 +259,63 @@ async function setup() {
     }
     return { ...config, engine, engineError, incomingUpdates };
   });
+  const installed =
+    app.isPackaged &&
+    process.platform === "win32" &&
+    fsSync.existsSync(path.join(process.resourcesPath, "svnx-installed"));
+  softwareUpdate = new SoftwareUpdate({
+    currentVersion: app.getVersion(),
+    mode: installed
+      ? "installed"
+      : process.env.PORTABLE_EXECUTABLE_FILE
+        ? "portable"
+        : "manual",
+    updater: installed ? require("electron-updater").autoUpdater : null,
+    fetchRelease: async (url) => {
+      const response = await net.fetch(url, {
+        credentials: "omit",
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (Number(response.headers.get("content-length")) > 1024 * 1024)
+        throw new Error("Release metadata too large");
+      const text = await response.text();
+      if (text.length > 1024 * 1024)
+        throw new Error("Release metadata too large");
+      return JSON.parse(text);
+    },
+    busy: () => activeTasks.size > 0,
+    install: () => {
+      installingUpdate = true;
+      setImmediate(() => {
+        try {
+          require("electron-updater").autoUpdater.quitAndInstall(true, true);
+        } catch (error) {
+          require("electron-updater").autoUpdater.emit("error", error);
+        }
+      });
+    },
+  });
+  softwareUpdate.on("state", (state) => {
+    if (state.phase !== "installing") installingUpdate = false;
+    broadcast({ type: "software-update", state });
+  });
+  handle("svnx:software-update", async (action) => {
+    if (
+      !["status", "check", "download", "cancel", "install", "release"].includes(
+        action,
+      )
+    )
+      throw new Error("不支持的更新操作");
+    if (action === "check") return softwareUpdate.check();
+    if (action === "download") return softwareUpdate.download();
+    if (action === "cancel") return softwareUpdate.cancel();
+    if (action === "install") return softwareUpdate.apply();
+    if (action === "release") await shell.openExternal(RELEASE_URL);
+    return softwareUpdate.snapshot();
+  });
   handle("svnx:open", async () => {
     const r = await dialog.showOpenDialog(window, {
       title: "打开 SVN 工作副本",
@@ -414,6 +475,8 @@ async function setup() {
     return true;
   });
   handle("svnx:run", async (request) => {
+    if (installingUpdate)
+      throw new Error("正在准备重启升级，请稍后再执行 SVN 操作。");
     if (
       !request ||
       !/^[a-f0-9-]{36}$/.test(request.id) ||
@@ -595,6 +658,7 @@ app.on("before-quit", (event) => {
     return;
   }
   for (const w of watchers.values()) w.close();
+  if (!installingUpdate) softwareUpdate?.dispose();
   worker?.kill();
 });
 app.on("activate", () => {
