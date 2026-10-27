@@ -2376,12 +2376,18 @@ kbd {
   flex-shrink: 0;
 }
 .status-cat {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+  flex: 1;
+  min-width: 42px;
+  height: 28px;
+  margin: 0 10px;
+  overflow: hidden;
 }
 .statusbar .status-cat-button {
-  position: relative;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  transform: translateX(var(--cat-to));
   width: 40px;
   height: 24px;
   padding: 0;
@@ -2399,11 +2405,80 @@ kbd {
   pointer-events: none;
 }
 .status-cat-message {
+  position: absolute;
+  right: 46px;
+  top: 5px;
   max-width: 180px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--soft);
+}
+.status-cat[data-pose="walk"] .status-cat-button,
+.status-cat[data-pose="chase"] .status-cat-button {
+  animation: status-cat-travel var(--cat-duration) linear both;
+}
+.status-cat-runner {
+  position: absolute;
+  width: 40px;
+  height: 46px;
+  left: 0;
+  bottom: -4px;
+  background: url("/startup-chase/atlas.png") no-repeat;
+  background-size: 160px 80px;
+  transform: scaleX(var(--cat-direction));
+  animation: status-cat-stride 1.2s steps(4) infinite;
+  pointer-events: none;
+}
+.status-cat[data-pose="chase"] .status-cat-runner {
+  animation-duration: 0.48s;
+}
+.status-cat[data-pose="catch"] .status-cat-runner {
+  animation: none;
+  background-position: -40px 0;
+}
+.status-cat-mouse {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 26px;
+  height: 22px;
+  pointer-events: none;
+  animation: status-mouse-travel var(--cat-duration) linear both;
+}
+.status-cat-mouse > span {
+  display: block;
+  width: 26px;
+  height: 22px;
+  background: url("/startup-chase/atlas.png") no-repeat 0 -30px / 104px 52px;
+  transform: scaleX(var(--cat-direction));
+  animation: status-mouse-stride 0.48s steps(4) infinite;
+}
+@keyframes status-cat-travel {
+  from {
+    transform: translateX(var(--cat-from));
+  }
+  to {
+    transform: translateX(var(--cat-to));
+  }
+}
+@keyframes status-mouse-travel {
+  from {
+    transform: translateX(var(--mouse-from));
+  }
+  to {
+    transform: translateX(var(--mouse-to));
+  }
+}
+@keyframes status-cat-stride {
+  to {
+    background-position-x: -160px;
+  }
+}
+@keyframes status-mouse-stride {
+  to {
+    background-position-x: -104px;
+  }
 }
 .software-update-section {
   border-top: 1px solid var(--line);

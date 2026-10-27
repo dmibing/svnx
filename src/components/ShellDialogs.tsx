@@ -124,7 +124,9 @@ export function SettingsDialog({
       <div className="settings-update-check">
         <div>
           <h3>猫咪摆件</h3>
-          <p>状态栏里的蓝白英短；点击互动，无声音。阅读代码时保持安静。</p>
+          <p>
+            蓝白英短会慢慢散步，偶尔追追小老鼠；点击互动，无声音。阅读代码时保持安静。
+          </p>
         </div>
         <label className="check-label">
           <input

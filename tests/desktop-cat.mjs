@@ -22,8 +22,12 @@ try {
   app = await launch();
   let page = await app.firstWindow();
   await expect(page.locator(".welcome")).toBeVisible({ timeout: 30000 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
   await page.reload();
+  await page.evaluate(() => {
+    Math.random = () => 0;
+  });
   await expect(
     page.getByRole("button", { name: "摸摸小猫", exact: true }),
   ).toBeVisible();
@@ -45,11 +49,41 @@ try {
     ),
   ).toBe(true);
   await expect(widget).toHaveAttribute("data-pose", "sleep");
-  await page.clock.fastForward(90000);
-  await expect(widget).toHaveAttribute("data-pose", "peek");
-  await page.clock.runFor(2200);
-  await expect(sprite).toHaveCSS("background-position", "-32px 0px");
-  await page.clock.runFor(3800);
+  await page.clock.fastForward(8000);
+  await expect(widget).toHaveAttribute("data-pose", "walk");
+  const runner = page.locator(".status-cat-runner");
+  await expect(runner).toBeVisible();
+  const poses = await runner.evaluate((element) => {
+    const animation = element.getAnimations()[0];
+    return [0, 310, 610, 910].map((time) => {
+      animation.pause();
+      animation.currentTime = time;
+      return getComputedStyle(element).backgroundPositionX;
+    });
+  });
+  expect(new Set(poses).size).toBe(4);
+  const positions = await page
+    .locator(".status-cat-button")
+    .evaluate((element) => {
+      const animation = element.getAnimations()[0];
+      return [0, 3000].map((time) => {
+        animation.pause();
+        animation.currentTime = time;
+        return element.getBoundingClientRect().x;
+      });
+    });
+  expect(Math.abs(positions[1] - positions[0])).toBeGreaterThan(30);
+  await page.clock.fastForward(24000);
+  await expect(widget).toHaveAttribute("data-pose", "sleep");
+  await page.clock.fastForward(25000);
+  await expect(widget).toHaveAttribute("data-pose", "chase");
+  await expect(page.locator(".status-cat-mouse")).toBeVisible();
+  await fs.mkdir("artifacts", { recursive: true });
+  await page.screenshot({ path: "artifacts/status-cat-chase.png" });
+  await page.clock.fastForward(3600);
+  await expect(widget).toHaveAttribute("data-pose", "catch");
+  await expect(page.locator(".status-cat-mouse")).toHaveCount(0);
+  await page.clock.fastForward(900);
   await expect(widget).toHaveAttribute("data-pose", "sleep");
   await page.getByRole("button", { name: "摸摸小猫", exact: true }).click();
   await expect(widget).toHaveAttribute("data-pose", "pet");
@@ -141,7 +175,7 @@ try {
   await page.getByRole("button", { name: "摸摸小猫", exact: true }).click();
   await expect(page.locator(".status-cat")).toHaveAttribute("data-pose", "pet");
   console.log(
-    "PASS: local cat atlas, idle peek and blink, click reactions, reduced motion, light/dark, persisted switch, invalid settings rejection and quiet code reading",
+    "PASS: local cat atlas, walking, four-pose strides, mouse chase and catch, click reactions, reduced motion, light/dark, persisted switch, invalid settings rejection and quiet code reading",
   );
 } finally {
   if (app) await app.close();

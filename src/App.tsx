@@ -969,14 +969,14 @@ export default function App() {
               任务记录<span>{tasks.length}</span>
             </button>
             {!window.svnx && <span className="demo-footer">浏览器预览</span>}
+            {(settings.statusCat ?? true) && (
+              <StatusCat
+                quiet={Boolean(
+                  current && (comparison || (view === "changes" && active)),
+                )}
+              />
+            )}
             <div className="statusbar-right">
-              {(settings.statusCat ?? true) && (
-                <StatusCat
-                  quiet={Boolean(
-                    current && (comparison || (view === "changes" && active)),
-                  )}
-                />
-              )}
               <span
                 className="footer-engine-status"
                 title={engine || engineError || "未检测到 SVN"}
