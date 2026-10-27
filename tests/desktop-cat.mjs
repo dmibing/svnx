@@ -51,11 +51,26 @@ try {
   await expect(widget).toHaveAttribute("data-pose", "sleep");
   await page.clock.fastForward(8000);
   await expect(widget).toHaveAttribute("data-pose", "walk");
-  const runner = page.locator(".status-cat-runner");
+  const runner = page.locator(".status-cat-action-sprite");
   await expect(runner).toBeVisible();
+  expect(
+    await runner.evaluate(
+      (element) =>
+        new Promise((resolve) => {
+          const image = new Image();
+          image.onload = () =>
+            resolve(
+              image.naturalWidth === image.naturalHeight &&
+                image.naturalWidth >= 1024,
+            );
+          image.onerror = () => resolve(false);
+          image.src = getComputedStyle(element).backgroundImage.slice(5, -2);
+        }),
+    ),
+  ).toBe(true);
   const poses = await runner.evaluate((element) => {
     const animation = element.getAnimations()[0];
-    return [0, 310, 610, 910].map((time) => {
+    return [0, 410, 810, 1210].map((time) => {
       animation.pause();
       animation.currentTime = time;
       return getComputedStyle(element).backgroundPositionX;
@@ -73,6 +88,8 @@ try {
       });
     });
   expect(Math.abs(positions[1] - positions[0])).toBeGreaterThan(30);
+  await fs.mkdir("artifacts", { recursive: true });
+  await page.screenshot({ path: "artifacts/status-cat-walk.png" });
   await page.clock.fastForward(24000);
   await expect(widget).toHaveAttribute("data-pose", "sleep");
   await page.clock.fastForward(25000);
@@ -85,6 +102,26 @@ try {
   await expect(page.locator(".status-cat-mouse")).toHaveCount(0);
   await page.clock.fastForward(900);
   await expect(widget).toHaveAttribute("data-pose", "sleep");
+  for (const [choice, pose, duration, row] of [
+    [0.35, "look", 2400, "-28px"],
+    [0.5, "groom", 4000, "-56px"],
+    [0.7, "stretch", 3200, "-84px"],
+  ]) {
+    await page.evaluate((choice) => {
+      Math.random = () => choice;
+    }, choice);
+    await page.clock.fastForward(25000);
+    await expect(widget).toHaveAttribute("data-pose", pose);
+    await expect(page.locator(".status-cat-action-sprite")).toHaveCSS(
+      "background-position-y",
+      row,
+    );
+    await page.evaluate(() => {
+      Math.random = () => 0;
+    });
+    await page.clock.fastForward(duration);
+    await expect(widget).toHaveAttribute("data-pose", "sleep");
+  }
   await page.getByRole("button", { name: "摸摸小猫", exact: true }).click();
   await expect(widget).toHaveAttribute("data-pose", "pet");
   await expect(page.locator(".status-cat-message")).toHaveText(
@@ -92,6 +129,11 @@ try {
   );
   await page.clock.runFor(600);
   await expect(sprite).toHaveCSS("background-position", "-96px -32px");
+  const catBox = await page.locator(".status-cat-button").boundingBox();
+  const bubbleBox = await page.locator(".status-cat-message").boundingBox();
+  expect(bubbleBox.y + bubbleBox.height).toBeLessThan(catBox.y);
+  expect(bubbleBox.x).toBeLessThanOrEqual(catBox.x + 20);
+  expect(bubbleBox.x + bubbleBox.width).toBeGreaterThanOrEqual(catBox.x + 20);
   await fs.mkdir("artifacts", { recursive: true });
   await page.screenshot({ path: "artifacts/status-cat-light.png" });
   await page.clock.runFor(2600);
@@ -175,7 +217,7 @@ try {
   await page.getByRole("button", { name: "摸摸小猫", exact: true }).click();
   await expect(page.locator(".status-cat")).toHaveAttribute("data-pose", "pet");
   console.log(
-    "PASS: local cat atlas, walking, four-pose strides, mouse chase and catch, click reactions, reduced motion, light/dark, persisted switch, invalid settings rejection and quiet code reading",
+    "PASS: local walk atlas, four-pose steps, look/blink/groom/stretch, mouse chase, anchored speech bubble, click reactions, reduced motion, light/dark, persisted switch and quiet code reading",
   );
 } finally {
   if (app) await app.close();

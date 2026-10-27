@@ -2381,6 +2381,11 @@ kbd {
   min-width: 42px;
   height: 28px;
   margin: 0 10px;
+  overflow: visible;
+}
+.status-cat-track {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 .statusbar .status-cat-button {
@@ -2406,13 +2411,66 @@ kbd {
 }
 .status-cat-message {
   position: absolute;
-  right: 46px;
-  top: 5px;
-  max-width: 180px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--soft);
+  z-index: 20;
+  left: var(--bubble-left);
+  bottom: 34px;
+  width: var(--bubble-width);
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 3px 12px #0002;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.status-cat-message::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: calc(var(--bubble-tail) - 4px);
+  width: 8px;
+  height: 8px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.status-cat-action-sprite {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  bottom: 0;
+  left: 6px;
+  background: url("/status-cat/actions-v2.png") no-repeat 0 0 / 112px 112px;
+  transform: scaleX(var(--cat-direction));
+  pointer-events: none;
+}
+.status-cat[data-pose="walk"] .status-cat-action-sprite {
+  animation: status-cat-walk 1.6s steps(4) infinite;
+}
+.status-cat[data-pose="look"] .status-cat-action-sprite {
+  background-position-y: -28px;
+  animation: status-cat-idle 2.4s steps(1) forwards;
+}
+.status-cat[data-pose="groom"] .status-cat-action-sprite {
+  background-position-y: -56px;
+  animation: status-cat-walk 1.2s steps(4) infinite;
+}
+.status-cat[data-pose="stretch"] .status-cat-action-sprite {
+  background-position-y: -84px;
+  animation: status-cat-idle 3.2s steps(1) forwards;
+}
+@keyframes status-cat-walk { to { background-position-x: -112px; } }
+@keyframes status-cat-idle {
+  0%,24% { background-position-x: 0; }
+  25%,49% { background-position-x: -28px; }
+  50%,74% { background-position-x: -56px; }
+  75%,100% { background-position-x: -84px; }
 }
 .status-cat[data-pose="walk"] .status-cat-button,
 .status-cat[data-pose="chase"] .status-cat-button {
@@ -2496,7 +2554,30 @@ kbd {
 .software-update-heading p { margin: 0; color: var(--muted); }
 .software-update-section > button, .software-update-section > div { margin-bottom: 10px; }
 .software-update-section .muted-caption { margin-top: 8px; }
-.software-update-notes { max-height: 140px; overflow: auto; white-space: pre-wrap; font: inherit; color: var(--soft); }
+.software-update-notes {
+  max-height: 260px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--soft);
+  padding: 4px 10px 4px 0;
+}
+.software-update-notes p { margin: 8px 0; }
+.software-update-notes ul, .software-update-notes ol { margin: 8px 0; padding-left: 22px; }
+.software-update-notes li { margin: 4px 0; }
+.software-update-notes h1, .software-update-notes h2, .software-update-notes h3,
+.software-update-notes h4, .software-update-notes h5, .software-update-notes h6 {
+  font-size: 14px; font-weight: 600; margin: 12px 0 6px; color: var(--text);
+}
+.software-update-notes code { font-size: 12px; background: var(--hover); padding: 1px 4px; border-radius: 3px; }
+.software-update-notes pre { overflow: auto; white-space: pre; background: var(--hover); padding: 8px 10px; border-radius: 4px; }
+.software-update-notes pre code { padding: 0; background: none; }
+.software-update-notes blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); }
+.software-update-notes table { border-collapse: collapse; display: block; overflow-x: auto; }
+.software-update-notes th, .software-update-notes td { padding: 4px 8px; border: 1px solid var(--line); text-align: left; }
+.software-update-notes > :first-child { margin-top: 0; }
+.software-update-notes > :last-child { margin-bottom: 0; }
 .software-update-confirm .button { margin-right: 8px; }
 .file-history {
   font-size: 11px;

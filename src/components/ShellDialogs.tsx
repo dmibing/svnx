@@ -192,9 +192,6 @@ export function SettingsDialog({
         />
       </div>
       <SoftwareUpdate />
-      <p className="modal-note">
-        界面语言：简体中文 · 设置自动保存；密码不写入设置。
-      </p>
       <footer>
         <button className="button primary" onClick={onClose}>
           完成

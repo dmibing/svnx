@@ -49,7 +49,9 @@ try {
     );
     await app.evaluate(
       async (_, { directory, feed }) => {
-        const require = process.getBuiltinModule("module").createRequire(process.cwd() + "/package.json");
+        const require = process
+          .getBuiltinModule("module")
+          .createRequire(process.cwd() + "/package.json");
         const { NsisUpdater } = require("electron-updater");
         const { SoftwareUpdate } = require(
           require("node:path").resolve("electron/software-update.cjs"),
@@ -116,7 +118,8 @@ try {
           ...state,
           phase: "available",
           version: "0.1.99",
-          notes: "fixture release notes",
+          notes:
+            '## 更新亮点\n\n- **慢悠悠散步**：猫咪走走停停\n\n<ul><li>偶尔追逐小老鼠</li></ul>\n<p>安装版支持<code>自定义目录</code>。<br>设置继续沿用。</p><script>window.releaseNoteExecuted=true</script><img src="https://example.invalid/remote.png" onerror="window.releaseNoteExecuted=true"><a href="javascript:alert(1)" onclick="alert(1)">普通文字</a>',
         };
       if (action === "download")
         state = { ...state, phase: "downloaded", progress: 100 };
@@ -136,7 +139,26 @@ try {
     });
   });
   await page.getByRole("button", { name: /偏好设置/ }).click();
+  await expect(
+    page.getByText("界面语言：简体中文", { exact: false }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "查看发布页", exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "检查软件更新", exact: true }).click();
+  await page.getByText("版本更新说明", { exact: true }).click();
+  const notes = page.locator(".software-update-notes");
+  await expect(notes.getByRole("heading", { name: "更新亮点" })).toBeVisible();
+  await expect(notes.locator("li")).toHaveCount(2);
+  await expect(notes.locator("strong")).toHaveText("慢悠悠散步");
+  await expect(notes.locator("code")).toHaveText("自定义目录");
+  await expect(notes).not.toContainText("<ul>");
+  await expect(
+    notes.locator("script,img,iframe,style,[onclick],[href]"),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => window.releaseNoteExecuted)).toBeUndefined();
+  await fs.mkdir("artifacts", { recursive: true });
+  await page.screenshot({ path: "artifacts/software-update-notes.png" });
   await page.getByRole("button", { name: "下载更新", exact: true }).click();
   await page
     .getByRole("button", { name: "重启并安装更新", exact: true })
@@ -146,6 +168,9 @@ try {
   ).toBe(false);
   await page.getByRole("button", { name: "确认重启安装", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("SVN 任务");
+  await expect(
+    page.getByRole("button", { name: "查看发布页", exact: true }),
+  ).toBeVisible();
   await app.evaluate(() => (globalThis.updateUiBusy = false));
   await page.getByRole("button", { name: "确认重启安装", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("正在重启升级");

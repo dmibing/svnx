@@ -10,6 +10,10 @@ React、CSS 背景选帧、标准浏览器可见性和减少动态效果 API 用
 
 > Use case: identity-preserve illustration sprite sheet. Create a new production sprite atlas of ONLY the same adorable blue-and-white British Shorthair kitten from the reference, preserving its plush round head, blue-gray coat, white muzzle/chest/paws, pink nose, gentle 2D illustrated style. No mouse. For a tiny quiet status-bar companion in a desktop coding app. STRICT 4 columns x 2 rows, equal square cells, total canvas landscape 2:1, transparent RGBA background. Every kitten entirely inside its own cell with generous 12% transparent margin and aligned bottom baseline; no clipped ears/tails/paws, no overlaps, all characters same scale. Exactly 8 poses: top row col1 front-facing head and front paws peeking curiously, col2 same peek with eyes closed in a blink, col3 curled up sleeping with tail around body and closed eyes, col4 same curled sleeping pose breathing gently. Bottom row col1 low relaxed lying down eyes open, col2 same lying down eyes closed, col3 happy response to being petted with eyes closed and one front paw slightly raised, col4 a cute gentle stretch. No text, letters, numbers, grid, frames, scenery, shadows, props or background. Keep silhouette readable at 40-pixel size, restrained soft outlines.
 
-状态栏中间的弹性空闲区域为猫咪活动范围，不覆盖两侧任务记录、SVN 版本和主题操作。首次空闲 8 秒后，以约 12px/s 慢步移动最多 280px，四帧腿部动作周期 1.2 秒；每次结束休息 25–45 秒。后续活动有 28% 概率触发短暂追鼠，追到后小老鼠消失，猫咪停顿后继续休息。活动直接复用启动图集，不添加依赖或在线素材；CSS 播放移动与选帧，React 只在动作切换时更新。窗口失焦、后台、代码阅读、减少动态效果或关闭摆件时取消自动活动和计时器；弹窗打开时延后下一次活动。
+状态栏中间的弹性空闲区域为猫咪活动范围，不覆盖两侧任务记录、SVN 版本和主题操作。首次空闲 8 秒后，以约 12px/s 慢步移动最多 280px，四帧步行动作周期 1.6 秒；每次结束休息 25–45 秒。后续活动有 28% 概率触发短暂追鼠，另外会随机张望眨眼、舔爪洗脸或伸懒腰后趴下打盹。奔跑图集仅用于追鼠，散步使用全新四脚落地的步行图集。CSS 播放移动与选帧，React 只在动作切换时更新。窗口失焦、后台、代码阅读、减少动态效果或关闭摆件时取消自动活动和计时器；弹窗打开时延后下一次活动。
 
-验证：`node tests/desktop-cat.mjs` 覆盖本地资源、慢步位移、四帧姿势、追鼠和抓住后休息、点击互动、浅深色、减少动态效果、关闭后重启保留、无效设置拒绝和代码阅读时保持安静。
+互动文字使用猫咪上方的悬浮气泡，尾巴指向当前猫咪位置，靠近活动区域边缘时收回到可用宽度内。气泡独立于活动轨道的裁剪层，不改变状态栏高度，也不遮挡两侧操作。
+
+`public/status-cat/actions-v2.png` 是 image_gen 生成后原样保存的透明 4×4 图集，以原有猫咪为外观参考。第一行四帧慢步，第二行左右张望与眨眼，第三行舔爪洗脸，第四行站立、伸懒腰、趴下、睡觉。保持蓝白英短毛色、白胸白爪、圆脸和粉鼻子；要求动作完整、统一网格、透明背景、无文字和边框。新增素材不替换启动动画。
+
+验证：`node tests/desktop-cat.mjs` 覆盖本地资源、慢步位移、独立步行四帧、张望眨眼、舔爪洗脸、伸懒腰、追鼠和抓住后休息、气泡位置、点击互动、浅深色、减少动态效果、关闭后重启保留、无效设置拒绝和代码阅读时保持安静。

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import { bridge, unwrap } from "../client";
 import type { SoftwareUpdateState } from "../types";
+const ReleaseNotes = lazy(() => import("./ReleaseNotes"));
 
 export default function SoftwareUpdate() {
   const [state, setState] = useState<SoftwareUpdateState | null>(null);
@@ -127,14 +128,23 @@ export default function SoftwareUpdate() {
         ["available", "downloading", "downloaded"].includes(state.phase) && (
           <details>
             <summary>版本更新说明</summary>
-            <pre className="software-update-notes">{state.notes}</pre>
+            <Suspense
+              fallback={<p className="muted-caption">正在加载更新说明…</p>}
+            >
+              <ReleaseNotes notes={state.notes} />
+            </Suspense>
           </details>
         )}
-      <button className="button subtle" onClick={() => void action("release")}>
-        {state.mode === "installed"
-          ? "查看发布页"
-          : "前往发布页下载安装版或便携版"}
-      </button>
+      {(state.mode !== "installed" || state.phase === "error" || error) && (
+        <button
+          className="button subtle"
+          onClick={() => void action("release")}
+        >
+          {state.mode === "installed"
+            ? "查看发布页"
+            : "前往发布页下载安装版或便携版"}
+        </button>
+      )}
     </section>
   );
 }
